@@ -1,6 +1,6 @@
 # --- Configuration ---
-# Source file
-SRC = main.cpp
+# Source files
+SRC = main.cpp mine.cpp ironworks.cpp stocks.cpp
 
 # Executable name
 TARGET = main

@@ -3,6 +3,21 @@
 #include <optional>
 #include <string>
 
+void initMine(const sf::Font& font);
+void updateMine(int mineClicks, const sf::Vector2f& mousePos);
+bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& money);
+void drawMine(sf::RenderWindow& window);
+
+void initIronworks(const sf::Font& font);
+void updateIronworks(const sf::Vector2f& mousePos);
+bool handleIronworksClick(const sf::Vector2f& mousePos);
+void drawIronworks(sf::RenderWindow& window);
+
+void initStocks(const sf::Font& font);
+void updateStocks(const sf::Vector2f& mousePos);
+bool handleStocksClick(const sf::Vector2f& mousePos);
+void drawStocks(sf::RenderWindow& window);
+
 enum class Location {
     Mine,
     Furnace,
@@ -184,29 +199,10 @@ int main()
     sf::Color mapButtonTextDefaultColor = sf::Color::White;
     sf::Color hoverColor = sf::Color(255, 200, 100); // Light orange/yellow for hover
 
-    // --- MINE LOCATION UI ---
-    // Clickable button for mine
-    sf::RectangleShape mineButton({200.f, 80.f});
-    mineButton.setFillColor(sf::Color(100, 100, 150));
-    mineButton.setPosition({300.f, 350.f});
-    mineButton.setOutlineColor(sf::Color::White);
-    mineButton.setOutlineThickness(2.f);
-
-    sf::Text mineButtonText(font, "Kop", 32);
-    mineButtonText.setFillColor(sf::Color::White);
-    mineButtonText.setOutlineColor(sf::Color::Black);
-    mineButtonText.setOutlineThickness(1.f);
-    // Center text on button (button is at 300, 350 with size 200x80)
-    // Position text approximately centered (will adjust in update loop if needed)
-    mineButtonText.setPosition({350.f, 365.f}); // Approximate center of button
-
-    // Counter text for mine
-    sf::Text mineCounterText(font);
-    mineCounterText.setCharacterSize(24);
-    mineCounterText.setFillColor(sf::Color::White);
-    mineCounterText.setOutlineColor(sf::Color::Black);
-    mineCounterText.setOutlineThickness(1.f);
-    mineCounterText.setPosition({300.f, 280.f});
+    // Initialize location modules
+    initMine(font);
+    initIronworks(font);
+    initStocks(font);
 
     while (window.isOpen())
     {
@@ -227,17 +223,18 @@ int main()
             mapButtonText.setFillColor(hoverColor);
         }
 
-        // Apply hover effect to mine button
+        // Update location-specific UI
         if (currentLocation == Location::Mine)
         {
-            if (mineButton.getGlobalBounds().contains(mousePos))
-            {
-                mineButton.setFillColor(sf::Color(120, 120, 180)); // Lighter when hovered
-            }
-            else
-            {
-                mineButton.setFillColor(sf::Color(100, 100, 150)); // Default color
-            }
+            updateMine(mineClicks, mousePos);
+        }
+        else if (currentLocation == Location::Furnace)
+        {
+            updateIronworks(mousePos);
+        }
+        else if (currentLocation == Location::Market)
+        {
+            updateStocks(mousePos);
         }
 
         // Apply hover effects to map location texts when on map
@@ -283,11 +280,18 @@ int main()
                     }
                 }
 
-                // Mine button click
-                if (currentLocation == Location::Mine && mineButton.getGlobalBounds().contains(mousePos))
+                // Handle location-specific clicks
+                if (currentLocation == Location::Mine)
                 {
-                    mineClicks++;
-                    money++;
+                    handleMineClick(mousePos, mineClicks, money);
+                }
+                else if (currentLocation == Location::Furnace)
+                {
+                    handleIronworksClick(mousePos);
+                }
+                else if (currentLocation == Location::Market)
+                {
+                    handleStocksClick(mousePos);
                 }
             }
         }
@@ -297,9 +301,6 @@ int main()
             "Level: " + std::to_string(level) +
             "\n$ " + std::to_string(money)
         );
-
-        // Update mine counter text
-        mineCounterText.setString("Klikniecia: " + std::to_string(mineClicks));
 
         switch (currentLocation)
         {
@@ -380,12 +381,18 @@ int main()
         {
             window.draw(locationText);
             
-            // Draw mine-specific UI (button and counter)
+            // Draw location-specific UI
             if (currentLocation == Location::Mine)
             {
-                window.draw(mineCounterText);
-                window.draw(mineButton);
-                window.draw(mineButtonText);
+                drawMine(window);
+            }
+            else if (currentLocation == Location::Furnace)
+            {
+                drawIronworks(window);
+            }
+            else if (currentLocation == Location::Market)
+            {
+                drawStocks(window);
             }
         }
 
