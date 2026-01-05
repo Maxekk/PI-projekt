@@ -1,14 +1,38 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
-// Ironworks (Furnace) location - simple, just shows title
-// No special UI needed for now
+#include <optional>
+#include <string>
+
+static sf::RectangleShape furnaceButton({260.f, 80.f});
+static std::optional<sf::Text> furnaceButtonText;
+static std::optional<sf::Text> furnaceInfoText;
 static bool isworking = false;
 static sf::Clock workclock;
 static const float worktime = 20.0f;
 static const int ironcost = 1000;
 static const int moneyrew = 100;
 
-void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& ironAmount)
+void initIronworks(const sf::Font& font)
+{
+    if (furnaceButtonText.has_value()) return;
+
+    furnaceButton.setFillColor(sf::Color(150, 50, 50));
+    furnaceButton.setPosition({270.f, 350.f});
+    furnaceButton.setOutlineColor(sf::Color::White);
+    furnaceButton.setOutlineThickness(2.f);
+
+    // POPRAWKA: Najpierw FONT, potem TEKST (wymóg SFML 3.0)
+    furnaceButtonText.emplace(font, "Przetop", 24);
+    furnaceButtonText->setFillColor(sf::Color::White);
+    furnaceButtonText->setPosition({330.f, 375.f});
+
+    // POPRAWKA: Najpierw FONT, potem TEKST
+    furnaceInfoText.emplace(font, "Piec gotowy.", 24);
+    furnaceInfoText->setFillColor(sf::Color::Yellow);
+    furnaceInfoText->setPosition({280.f, 300.f});
+}
+
+void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron)
 {
     if (isworking)
     {
@@ -43,7 +67,6 @@ void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& ironAm
     }
 }
 
-
 bool handleIronworksClick(const sf::Vector2f& mousePos, int& money, long long& iron)
 {
     // Klikamy tylko, gdy NIE pracuje i mamy surowce
@@ -51,7 +74,7 @@ bool handleIronworksClick(const sf::Vector2f& mousePos, int& money, long long& i
     {
         iron -= ironcost; // Pobierz opłatę
         isworking = true;       // Uruchom maszynę
-        workclocklock.restart();    // Resetuj stoper
+        workclock.restart();    // Resetuj stoper
         return true;
     }
     return false;
@@ -59,6 +82,7 @@ bool handleIronworksClick(const sf::Vector2f& mousePos, int& money, long long& i
 
 void drawIronworks(sf::RenderWindow& window)
 {
-    // Nothing to draw beyond the background and title (handled in main)
+    window.draw(furnaceButton);
+    if (furnaceButtonText) window.draw(*furnaceButtonText);
+    if (furnaceInfoText) window.draw(*furnaceInfoText);
 }
-

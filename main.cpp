@@ -301,7 +301,7 @@ int main()
         statsText.setString(
             "Level: " + std::to_string(level) +
             "\n$ " + std::to_string(money) +
-            "Fe: " + std::to_string(iron) + "kg"
+            "\nFe: " + std::to_string(iron) + "kg"
         );
 
         switch (currentLocation)
