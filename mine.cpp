@@ -48,12 +48,12 @@ void updateMine(int mineClicks, const sf::Vector2f& mousePos)
     }
 }
 
-bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& money)
+bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& iron)
 {
     if (mineButton.getGlobalBounds().contains(mousePos))
     {
         mineClicks++;
-        money++;
+        iron++;
         return true;
     }
     return false;

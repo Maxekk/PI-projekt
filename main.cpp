@@ -5,12 +5,12 @@
 
 void initMine(const sf::Font& font);
 void updateMine(int mineClicks, const sf::Vector2f& mousePos);
-bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& money);
+bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& iron);
 void drawMine(sf::RenderWindow& window);
 
 void initIronworks(const sf::Font& font);
-void updateIronworks(const sf::Vector2f& mousePos);
-bool handleIronworksClick(const sf::Vector2f& mousePos);
+void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron);
+bool handleIronworksClick(const sf::Vector2f& mousePos, int& money, long long& iron);
 void drawIronworks(sf::RenderWindow& window);
 
 void initStocks(const sf::Font& font);
@@ -154,6 +154,7 @@ int main()
     Location currentLocation = Location::Mine;
     int level = 1;
     int money = 0;
+    long long iron = 0;
     int mineClicks = 0;
 
     // --- UI: TOP LEFT (LEVEL + MONEY) ---
@@ -230,7 +231,7 @@ int main()
         }
         else if (currentLocation == Location::Furnace)
         {
-            updateIronworks(mousePos);
+            updateIronworks(mousePos, money, iron);
         }
         else if (currentLocation == Location::Market)
         {
@@ -283,11 +284,11 @@ int main()
                 // Handle location-specific clicks
                 if (currentLocation == Location::Mine)
                 {
-                    handleMineClick(mousePos, mineClicks, money);
+                    handleMineClick(mousePos, mineClicks, iron);
                 }
                 else if (currentLocation == Location::Furnace)
                 {
-                    handleIronworksClick(mousePos);
+                    handleIronworksClick(mousePos, money, iron);
                 }
                 else if (currentLocation == Location::Market)
                 {
@@ -299,7 +300,8 @@ int main()
         // --- UPDATE TEXT ---
         statsText.setString(
             "Level: " + std::to_string(level) +
-            "\n$ " + std::to_string(money)
+            "\n$ " + std::to_string(money) +
+            "Fe: " + std::to_string(iron) + "kg"
         );
 
         switch (currentLocation)
