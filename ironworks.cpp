@@ -10,7 +10,7 @@ static bool isworking = false;
 static sf::Clock workclock;
 static const float worktime = 20.0f;
 static const int ironcost = 10;
-static const int moneyrew = 100;
+static const int steelReward = 10; // 10 iron = 10 steel
 
 void initIronworks(const sf::Font& font)
 {
@@ -32,7 +32,7 @@ void initIronworks(const sf::Font& font)
     furnaceInfoText->setPosition({280.f, 300.f});
 }
 
-void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron)
+void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel)
 {
     if (isworking)
     {
@@ -41,8 +41,8 @@ void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron)
         {
             // Koniec czasu
             isworking = false;
-            money += moneyrew;
-            if (furnaceInfoText) furnaceInfoText->setString("Przetop gotowy! +$" + std::to_string(moneyrew));
+            steel += steelReward; // Give steel instead of money
+            if (furnaceInfoText) furnaceInfoText->setString("Przetop gotowy! +" + std::to_string(steelReward) + " steel");
             furnaceButton.setFillColor(sf::Color(150, 50, 50)); // Reset koloru
         }
         else
@@ -67,7 +67,7 @@ void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron)
     }
 }
 
-bool handleIronworksClick(const sf::Vector2f& mousePos, int& money, long long& iron)
+bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long long& steel)
 {
     // Klikamy tylko, gdy NIE pracuje i mamy surowce
     if (!isworking && iron >= ironcost && furnaceButton.getGlobalBounds().contains(mousePos))

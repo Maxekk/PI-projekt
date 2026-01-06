@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <random>
 
 // Mine location UI elements
 static sf::RectangleShape mineButton({200.f, 80.f});
@@ -24,6 +25,15 @@ static bool doubleClickPurchased = false;
 static sf::RectangleShape doubleClickButton({250.f, 60.f});
 static std::optional<sf::Text> doubleClickButtonText;
 static const int doubleClickCost = 100;
+
+// Critical Hit upgrade
+static bool criticalHitPurchased = false;
+static sf::RectangleShape criticalHitButton({250.f, 60.f});
+static std::optional<sf::Text> criticalHitButtonText;
+static const int criticalHitCost = 50;
+static std::random_device rd;
+static std::mt19937 gen(rd());
+static std::uniform_int_distribution<> dis(1, 100);
 
 // Sound for mine click
 static sf::SoundBuffer pickaxeSoundBuffer;
@@ -102,6 +112,18 @@ void initMine(const sf::Font& font)
     doubleClickButtonText->setOutlineColor(sf::Color::Black);
     doubleClickButtonText->setOutlineThickness(1.f);
     doubleClickButtonText->setPosition({200.f, 190.f});
+
+    // Critical Hit upgrade button
+    criticalHitButton.setFillColor(sf::Color(100, 60, 100));
+    criticalHitButton.setOutlineColor(sf::Color::White);
+    criticalHitButton.setOutlineThickness(2.f);
+    criticalHitButton.setPosition({175.f, 260.f});
+
+    criticalHitButtonText = sf::Text(font, "Critical Hit\nCost: 50$", 20);
+    criticalHitButtonText->setFillColor(sf::Color::White);
+    criticalHitButtonText->setOutlineColor(sf::Color::Black);
+    criticalHitButtonText->setOutlineThickness(1.f);
+    criticalHitButtonText->setPosition({200.f, 270.f});
 }
 
 void updateMine(int mineClicks, const sf::Vector2f& mousePos, int money)
@@ -165,8 +187,34 @@ void updateMine(int mineClicks, const sf::Vector2f& mousePos, int money)
             }
         }
     }
-}
 
+    // Hover effect for critical hit upgrade button
+    if (storeOpen && !criticalHitPurchased)
+    {
+        if (criticalHitButton.getGlobalBounds().contains(mousePos))
+        {
+            if (money >= criticalHitCost)
+            {
+                criticalHitButton.setFillColor(sf::Color(130, 80, 130));
+            }
+            else
+            {
+                criticalHitButton.setFillColor(sf::Color(100, 60, 60));
+            }
+        }
+        else
+        {
+            if (money >= criticalHitCost)
+            {
+                criticalHitButton.setFillColor(sf::Color(100, 60, 100));
+            }
+            else
+            {
+                criticalHitButton.setFillColor(sf::Color(80, 50, 50));
+            }
+        }
+    }
+}
 
 bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& collectedIron, int& money, int& xp)
 {
@@ -193,6 +241,22 @@ bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& c
         }
     }
 
+    // Handle critical hit upgrade purchase
+    if (storeOpen && !criticalHitPurchased && criticalHitButton.getGlobalBounds().contains(mousePos))
+    {
+        if (money >= criticalHitCost)
+        {
+            money -= criticalHitCost;
+            criticalHitPurchased = true;
+            criticalHitButton.setFillColor(sf::Color(40, 40, 40));
+            if (criticalHitButtonText.has_value())
+            {
+                criticalHitButtonText->setString("Critical Hit\nPURCHASED");
+            }
+            return true;
+        }
+    }
+
     // Handle upgrades button
     if (!storeOpen && upgradesButton.getGlobalBounds().contains(mousePos))
     {
@@ -214,20 +278,40 @@ bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& c
             newSound.setVolume(100.f); // Ensure volume is set
             newSound.play();
             
-            // Keep only last 5 sounds to avoid memory issues
-            if (activeSounds.size() > 5)
+            // Only clean up if we have too many sounds (keep last 20 to allow overlapping)
+            // This prevents sounds from being cut off too early
+            if (activeSounds.size() > 20)
             {
-                activeSounds.erase(activeSounds.begin());
+                // Remove oldest sounds, keep the last 15
+                activeSounds.erase(activeSounds.begin(), activeSounds.begin() + (activeSounds.size() - 15));
             }
         }
         
+        // Check for critical hit (20% chance if purchased)
+        bool isCritical = false;
+        if (criticalHitPurchased)
+        {
+            int roll = dis(gen);
+            if (roll <= 20) // 20% chance (1-20 out of 100)
+            {
+                isCritical = true;
+            }
+        }
+        
+        // Calculate iron gain
+        int baseGain = 1;
         if (doubleClickPurchased)
         {
-            collectedIron += 2; // Double click upgrade active
+            baseGain = 2; // Double click upgrade active
+        }
+        
+        if (isCritical)
+        {
+            collectedIron += baseGain * 3; // Critical hit: 3x the base gain
         }
         else
         {
-            collectedIron++; // Normal click
+            collectedIron += baseGain; // Normal click
         }
         return true;
     }
@@ -277,6 +361,35 @@ void drawMine(sf::RenderWindow& window, int money)
             {
                 doubleClickButtonText->setFillColor(sf::Color(150, 150, 150));
                 window.draw(*doubleClickButtonText);
+            }
+        }
+
+        // Draw critical hit upgrade button
+        if (!criticalHitPurchased)
+        {
+            window.draw(criticalHitButton);
+            if (criticalHitButtonText.has_value())
+            {
+                // Update text color based on affordability
+                if (money >= criticalHitCost)
+                {
+                    criticalHitButtonText->setFillColor(sf::Color::White);
+                }
+                else
+                {
+                    criticalHitButtonText->setFillColor(sf::Color(200, 150, 150));
+                }
+                window.draw(*criticalHitButtonText);
+            }
+        }
+        else
+        {
+            // Draw purchased upgrade (grayed out)
+            window.draw(criticalHitButton);
+            if (criticalHitButtonText.has_value())
+            {
+                criticalHitButtonText->setFillColor(sf::Color(150, 150, 150));
+                window.draw(*criticalHitButtonText);
             }
         }
     }

@@ -9,8 +9,8 @@ bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& c
 void drawMine(sf::RenderWindow& window, int money);
 
 void initIronworks(const sf::Font& font);
-void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron);
-bool handleIronworksClick(const sf::Vector2f& mousePos, int& money, long long& iron);
+void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel);
+bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long long& steel);
 void drawIronworks(sf::RenderWindow& window);
 
 void initStocks(const sf::Font& font);
@@ -157,6 +157,7 @@ int main()
     int money = 200; // Will be used later
     int mineClicks = 0;
     long long collectedIron = 0; // Iron collected from mine
+    long long steel = 0; // Steel produced from iron
 
     // Function to calculate XP needed for next level
     auto getXPForNextLevel = [](int currentLevel) -> int {
@@ -248,7 +249,7 @@ int main()
         }
         else if (currentLocation == Location::Furnace)
         {
-            updateIronworks(mousePos, money, collectedIron);
+            updateIronworks(mousePos, collectedIron, steel);
         }
         else if (currentLocation == Location::Market)
         {
@@ -305,7 +306,7 @@ int main()
                 }
                 else if (currentLocation == Location::Furnace)
                 {
-                    handleIronworksClick(mousePos, money, collectedIron);
+                    handleIronworksClick(mousePos, collectedIron, steel);
                 }
                 else if (currentLocation == Location::Market)
                 {
@@ -328,6 +329,7 @@ int main()
         statsText.setString(
             "Level: " + std::to_string(level) + " (" + std::to_string(xp) + "/" + std::to_string(nextLevelXP) + ")" +
             "\nIron: " + std::to_string(collectedIron) +
+            "\nSteel: " + std::to_string(steel) +
             "\n$ " + std::to_string(money)
         );
 
