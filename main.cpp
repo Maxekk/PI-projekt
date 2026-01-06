@@ -4,15 +4,9 @@
 #include <string>
 
 void initMine(const sf::Font& font);
-<<<<<<< Updated upstream
-void updateMine(int mineClicks, const sf::Vector2f& mousePos);
-bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& iron);
-void drawMine(sf::RenderWindow& window);
-=======
 void updateMine(int mineClicks, const sf::Vector2f& mousePos, int money);
-bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& collectedIron, int& money, int& xp);
+bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& collectedIron, int& money, int& xp);
 void drawMine(sf::RenderWindow& window, int money);
->>>>>>> Stashed changes
 
 void initIronworks(const sf::Font& font);
 void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron);
@@ -159,15 +153,10 @@ int main()
     // --- GAME STATE ---
     Location currentLocation = Location::Mine;
     int level = 1;
-<<<<<<< Updated upstream
-    int money = 0;
-    long long iron = 0;
-=======
     int xp = 0; // Experience points
     int money = 200; // Will be used later
->>>>>>> Stashed changes
     int mineClicks = 0;
-    int collectedIron = 0; // Iron collected from mine
+    long long collectedIron = 0; // Iron collected from mine
 
     // Function to calculate XP needed for next level
     auto getXPForNextLevel = [](int currentLevel) -> int {
@@ -259,7 +248,7 @@ int main()
         }
         else if (currentLocation == Location::Furnace)
         {
-            updateIronworks(mousePos, money, iron);
+            updateIronworks(mousePos, money, collectedIron);
         }
         else if (currentLocation == Location::Market)
         {
@@ -312,15 +301,11 @@ int main()
                 // Handle location-specific clicks
                 if (currentLocation == Location::Mine)
                 {
-<<<<<<< Updated upstream
-                    handleMineClick(mousePos, mineClicks, iron);
-=======
                     handleMineClick(mousePos, mineClicks, collectedIron, money, xp);
->>>>>>> Stashed changes
                 }
                 else if (currentLocation == Location::Furnace)
                 {
-                    handleIronworksClick(mousePos, money, iron);
+                    handleIronworksClick(mousePos, money, collectedIron);
                 }
                 else if (currentLocation == Location::Market)
                 {
@@ -341,15 +326,9 @@ int main()
         // --- UPDATE TEXT ---
         int nextLevelXP = getXPForNextLevel(level);
         statsText.setString(
-<<<<<<< Updated upstream
-            "Level: " + std::to_string(level) +
-            "\n$ " + std::to_string(money) +
-            "\nFe: " + std::to_string(iron) + "kg"
-=======
             "Level: " + std::to_string(level) + " (" + std::to_string(xp) + "/" + std::to_string(nextLevelXP) + ")" +
             "\nIron: " + std::to_string(collectedIron) +
             "\n$ " + std::to_string(money)
->>>>>>> Stashed changes
         );
 
         switch (currentLocation)

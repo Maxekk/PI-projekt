@@ -167,11 +167,8 @@ void updateMine(int mineClicks, const sf::Vector2f& mousePos, int money)
     }
 }
 
-<<<<<<< Updated upstream
-bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& iron)
-=======
-bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& collectedIron, int& money, int& xp)
->>>>>>> Stashed changes
+
+bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& collectedIron, int& money, int& xp)
 {
     // Handle store close button
     if (storeOpen && storeCloseButton.getGlobalBounds().contains(mousePos))
@@ -207,11 +204,7 @@ bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& collect
     if (!storeOpen && mineButton.getGlobalBounds().contains(mousePos))
     {
         mineClicks++;
-<<<<<<< Updated upstream
-        iron++;
-=======
         xp++; // Each click gives 1 XP
-        
         // Play pickaxe sound
         if (soundLoaded && pickaxeSoundBuffer.getSampleCount() > 0)
         {
@@ -236,7 +229,6 @@ bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& collect
         {
             collectedIron++; // Normal click
         }
->>>>>>> Stashed changes
         return true;
     }
     return false;
