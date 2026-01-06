@@ -11,14 +11,14 @@ CPPFLAGS = -std=c++17
 # --- macOS (Homebrew) Configuration ---
 MACOS_SFML_LIB_PATH = /opt/homebrew/Cellar/sfml/3.0.2/lib
 MACOS_SFML_INCLUDE_PATH = /opt/homebrew/Cellar/sfml/3.0.2/include
-SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system
+SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
 
 # --- Linux Configuration ---
-LINUX_SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system
+LINUX_SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
 
 # --- Windows (MSYS2 MinGW64) Configuration ---
 # If using MSYS2, SFML is installed in /mingw64 and headers/libs are already in PATH
-WIN_SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system
+WIN_SFML_LIBS = -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
 WIN_FLAGS = -mwindows
 
 # --- Targets ---

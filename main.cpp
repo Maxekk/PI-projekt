@@ -4,9 +4,15 @@
 #include <string>
 
 void initMine(const sf::Font& font);
+<<<<<<< Updated upstream
 void updateMine(int mineClicks, const sf::Vector2f& mousePos);
 bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& iron);
 void drawMine(sf::RenderWindow& window);
+=======
+void updateMine(int mineClicks, const sf::Vector2f& mousePos, int money);
+bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, int& collectedIron, int& money, int& xp);
+void drawMine(sf::RenderWindow& window, int money);
+>>>>>>> Stashed changes
 
 void initIronworks(const sf::Font& font);
 void updateIronworks(const sf::Vector2f& mousePos, int& money, long long& iron);
@@ -153,9 +159,31 @@ int main()
     // --- GAME STATE ---
     Location currentLocation = Location::Mine;
     int level = 1;
+<<<<<<< Updated upstream
     int money = 0;
     long long iron = 0;
+=======
+    int xp = 0; // Experience points
+    int money = 200; // Will be used later
+>>>>>>> Stashed changes
     int mineClicks = 0;
+    int collectedIron = 0; // Iron collected from mine
+
+    // Function to calculate XP needed for next level
+    auto getXPForNextLevel = [](int currentLevel) -> int {
+        switch(currentLevel) {
+            case 1: return 50;
+            case 2: return 100;
+            case 3: return 150;
+            case 4: return 250;
+            case 5: return 400;
+            case 6: return 600;
+            case 7: return 850;
+            case 8: return 1150;
+            case 9: return 1500;
+            default: return 2000 + (currentLevel - 10) * 500; // 2000, 2500, 3000...
+        }
+    };
 
     // --- UI: TOP LEFT (LEVEL + MONEY) ---
     sf::Text statsText(font);
@@ -227,7 +255,7 @@ int main()
         // Update location-specific UI
         if (currentLocation == Location::Mine)
         {
-            updateMine(mineClicks, mousePos);
+            updateMine(mineClicks, mousePos, money);
         }
         else if (currentLocation == Location::Furnace)
         {
@@ -284,7 +312,11 @@ int main()
                 // Handle location-specific clicks
                 if (currentLocation == Location::Mine)
                 {
+<<<<<<< Updated upstream
                     handleMineClick(mousePos, mineClicks, iron);
+=======
+                    handleMineClick(mousePos, mineClicks, collectedIron, money, xp);
+>>>>>>> Stashed changes
                 }
                 else if (currentLocation == Location::Furnace)
                 {
@@ -297,11 +329,27 @@ int main()
             }
         }
 
+        // Check for level up
+        int xpNeeded = getXPForNextLevel(level);
+        while (xp >= xpNeeded && level < 100) // Cap at level 100
+        {
+            xp -= xpNeeded;
+            level++;
+            xpNeeded = getXPForNextLevel(level);
+        }
+
         // --- UPDATE TEXT ---
+        int nextLevelXP = getXPForNextLevel(level);
         statsText.setString(
+<<<<<<< Updated upstream
             "Level: " + std::to_string(level) +
             "\n$ " + std::to_string(money) +
             "\nFe: " + std::to_string(iron) + "kg"
+=======
+            "Level: " + std::to_string(level) + " (" + std::to_string(xp) + "/" + std::to_string(nextLevelXP) + ")" +
+            "\nIron: " + std::to_string(collectedIron) +
+            "\n$ " + std::to_string(money)
+>>>>>>> Stashed changes
         );
 
         switch (currentLocation)
@@ -381,12 +429,16 @@ int main()
         }
         else
         {
-            window.draw(locationText);
+            // Draw location text only for non-mine locations
+            if (currentLocation != Location::Mine)
+            {
+                window.draw(locationText);
+            }
             
             // Draw location-specific UI
             if (currentLocation == Location::Mine)
             {
-                drawMine(window);
+                drawMine(window, money);
             }
             else if (currentLocation == Location::Furnace)
             {
