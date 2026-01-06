@@ -9,7 +9,7 @@ static std::optional<sf::Text> furnaceInfoText;
 static bool isworking = false;
 static sf::Clock workclock;
 static const float worktime = 20.0f;
-static const int ironcost = 1000;
+static const int ironcost = 10;
 static const int moneyrew = 100;
 
 void initIronworks(const sf::Font& font)
