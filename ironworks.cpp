@@ -12,8 +12,35 @@ static const float worktime = 20.0f;
 static const int ironcost = 10;
 static const int steelReward = 10; // 10 iron = 10 steel
 
+// HUTA title image at top center
+static sf::Texture hutaTitleTexture;
+static std::optional<sf::Sprite> hutaTitleSprite;
+static bool hutaTitleLoaded = false;
+
 void initIronworks(const sf::Font& font)
 {
+    if (furnaceButtonText.has_value() && hutaTitleLoaded) return;
+
+    // Load HUTA title image
+    if (!hutaTitleLoaded && hutaTitleTexture.loadFromFile("images/ui-huta.png"))
+    {
+        hutaTitleSprite = sf::Sprite(hutaTitleTexture);
+        // Position at top center (window is 800 wide, so center is 400)
+        // Make it pretty big - around 400 pixels wide
+        sf::Vector2u textureSize = hutaTitleTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scaleX = 400.f / static_cast<float>(textureSize.x);
+            float scaleY = scaleX; // Maintain aspect ratio
+            hutaTitleSprite->setScale({scaleX, scaleY});
+            // Center horizontally: (800 - (textureSize.x * scaleX)) / 2
+            float scaledWidth = textureSize.x * scaleX;
+            float xPos = (800.f - scaledWidth) / 2.f;
+            hutaTitleSprite->setPosition({xPos, 20.f});
+        }
+        hutaTitleLoaded = true;
+    }
+
     if (furnaceButtonText.has_value()) return;
 
     furnaceButton.setFillColor(sf::Color(150, 50, 50));
@@ -82,6 +109,12 @@ bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long lo
 
 void drawIronworks(sf::RenderWindow& window)
 {
+    // Draw HUTA title at top center
+    if (hutaTitleSprite.has_value())
+    {
+        window.draw(*hutaTitleSprite);
+    }
+    
     window.draw(furnaceButton);
     if (furnaceButtonText) window.draw(*furnaceButtonText);
     if (furnaceInfoText) window.draw(*furnaceInfoText);

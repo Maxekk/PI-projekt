@@ -5,9 +5,19 @@
 #include <vector>
 #include <random>
 
-// Mine location UI elements
-static sf::RectangleShape mineButton({200.f, 80.f});
-static std::optional<sf::Text> mineButtonText;
+// Mine location UI elements - KOP button using images
+static sf::Texture mineButtonTexture;
+static sf::Texture mineButtonPressedTexture;
+static std::optional<sf::Sprite> mineButtonSprite;
+static bool mineButtonTexturesLoaded = false;
+static bool mineButtonPressed = false;
+static sf::Clock pressTimer;
+static const float pressDuration = 0.1f; // Show pressed state for 0.1 seconds
+
+// KOPALNIA title image at top center
+static sf::Texture kopalniaTitleTexture;
+static std::optional<sf::Sprite> kopalniaTitleSprite;
+static bool kopalniaTitleLoaded = false;
 
 // Upgrades button and store
 static sf::RectangleShape upgradesButton({100.f, 40.f});
@@ -42,7 +52,45 @@ static std::vector<sf::Sound> activeSounds; // Keep sounds alive while playing
 
 void initMine(const sf::Font& font)
 {
-    if (mineButtonText.has_value()) return;
+    if (mineButtonTexturesLoaded) return;
+    
+    // Load KOP button textures
+    if (mineButtonTexture.loadFromFile("images/ui-kopalnia-kop.png") &&
+        mineButtonPressedTexture.loadFromFile("images/ui-kopalnia-kop-pressed.png"))
+    {
+        mineButtonSprite = sf::Sprite(mineButtonTexture);
+        // Position lower and make bigger (300x120 instead of 200x80)
+        mineButtonSprite->setPosition({250.f, 450.f});
+        // Scale to bigger size (300x120)
+        sf::Vector2u textureSize = mineButtonTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scaleX = 300.f / static_cast<float>(textureSize.x);
+            float scaleY = 120.f / static_cast<float>(textureSize.y);
+            mineButtonSprite->setScale({scaleX, scaleY});
+        }
+        mineButtonTexturesLoaded = true;
+    }
+    
+    // Load KOPALNIA title image
+    if (!kopalniaTitleLoaded && kopalniaTitleTexture.loadFromFile("images/ui-kopalnia.png"))
+    {
+        kopalniaTitleSprite = sf::Sprite(kopalniaTitleTexture);
+        // Position at top center (window is 800 wide, so center is 400)
+        // Make it pretty big - around 400 pixels wide
+        sf::Vector2u textureSize = kopalniaTitleTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scaleX = 400.f / static_cast<float>(textureSize.x);
+            float scaleY = scaleX; // Maintain aspect ratio
+            kopalniaTitleSprite->setScale({scaleX, scaleY});
+            // Center horizontally: (800 - (textureSize.x * scaleX)) / 2
+            float scaledWidth = textureSize.x * scaleX;
+            float xPos = (800.f - scaledWidth) / 2.f;
+            kopalniaTitleSprite->setPosition({xPos, 20.f});
+        }
+        kopalniaTitleLoaded = true;
+    }
     
     // TODO: BUG AFTER 5 CLICKS SOUNDS GLITCHES
     // Load pickaxe sound
@@ -58,17 +106,6 @@ void initMine(const sf::Font& font)
             }
         }
     }
-    
-    mineButton.setFillColor(sf::Color(100, 100, 150));
-    mineButton.setPosition({300.f, 350.f});
-    mineButton.setOutlineColor(sf::Color::White);
-    mineButton.setOutlineThickness(2.f);
-
-    mineButtonText = sf::Text(font, "Kop", 32);
-    mineButtonText->setFillColor(sf::Color::White);
-    mineButtonText->setOutlineColor(sf::Color::Black);
-    mineButtonText->setOutlineThickness(1.f);
-    mineButtonText->setPosition({350.f, 365.f});
 
     // Upgrades button (below MAPA button at 690, 10, so below it at 690, 60)
     upgradesButton.setFillColor(sf::Color(80, 80, 80));
@@ -128,16 +165,17 @@ void initMine(const sf::Font& font)
 
 void updateMine(int mineClicks, const sf::Vector2f& mousePos, int money)
 {
-    // Hover effect for mine button
-    if (!storeOpen)
+    // Update pressed button state (reset after press duration)
+    if (mineButtonPressed && pressTimer.getElapsedTime().asSeconds() >= pressDuration)
     {
-        if (mineButton.getGlobalBounds().contains(mousePos))
+        mineButtonPressed = false;
+        if (mineButtonSprite.has_value())
         {
-            mineButton.setFillColor(sf::Color(120, 120, 180));
-        }
-        else
-        {
-            mineButton.setFillColor(sf::Color(100, 100, 150));
+            // Save current scale before switching texture
+            sf::Vector2f currentScale = mineButtonSprite->getScale();
+            mineButtonSprite->setTexture(mineButtonTexture);
+            // Restore scale after texture change
+            mineButtonSprite->setScale(currentScale);
         }
     }
 
@@ -265,8 +303,17 @@ bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& c
     }
 
     // Handle mine button (only when store is closed)
-    if (!storeOpen && mineButton.getGlobalBounds().contains(mousePos))
+    if (!storeOpen && mineButtonSprite.has_value() && mineButtonSprite->getGlobalBounds().contains(mousePos))
     {
+        // Show pressed state
+        mineButtonPressed = true;
+        pressTimer.restart();
+        // Save current scale before switching texture
+        sf::Vector2f currentScale = mineButtonSprite->getScale();
+        mineButtonSprite->setTexture(mineButtonPressedTexture);
+        // Restore scale after texture change
+        mineButtonSprite->setScale(currentScale);
+        
         mineClicks++;
         xp++; // Each click gives 1 XP
         // Play pickaxe sound
@@ -320,6 +367,12 @@ bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& c
 
 void drawMine(sf::RenderWindow& window, int money)
 {
+    // Draw KOPALNIA title at top center
+    if (kopalniaTitleSprite.has_value())
+    {
+        window.draw(*kopalniaTitleSprite);
+    }
+    
     // Always draw upgrades button
     window.draw(upgradesButton);
     if (upgradesButtonText.has_value())
@@ -396,9 +449,10 @@ void drawMine(sf::RenderWindow& window, int money)
     else
     {
         // Draw mine button only when store is closed
-        window.draw(mineButton);
-        if (mineButtonText.has_value())
-            window.draw(*mineButtonText);
+        if (mineButtonSprite.has_value())
+        {
+            window.draw(*mineButtonSprite);
+        }
     }
 }
 

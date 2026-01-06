@@ -175,20 +175,41 @@ int main()
         }
     };
 
+    // --- UI: MAINBAR (TOP LEFT) ---
+    sf::Texture mainbarTexture;
+    std::optional<sf::Sprite> mainbarSprite;
+    if (mainbarTexture.loadFromFile("images/UI-mainbar.png"))
+    {
+        mainbarSprite = sf::Sprite(mainbarTexture);
+        mainbarSprite->setPosition({0.f, 0.f}); // Top left corner
+    }
+
     // --- UI: TOP LEFT (LEVEL + MONEY) ---
     sf::Text statsText(font);
     statsText.setCharacterSize(18);
     statsText.setFillColor(sf::Color::White);
     statsText.setPosition({10.f, 10.f});
 
-    // --- UI: MAP BUTTON (TOP RIGHT) ---
+    // --- UI: MAP BUTTON (TOP RIGHT)
+    sf::Texture mapButtonTexture;
+    std::optional<sf::Sprite> mapButtonSprite;
+    if (mapButtonTexture.loadFromFile("images/ui-mapa.png"))
+    {
+        mapButtonSprite = sf::Sprite(mapButtonTexture);
+        mapButtonSprite->setPosition({690.f, 10.f});
+        // Scale to appropriate button size (100x40)
+        sf::Vector2u textureSize = mapButtonTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scaleX = 100.f / static_cast<float>(textureSize.x);
+            float scaleY = 40.f / static_cast<float>(textureSize.y);
+            mapButtonSprite->setScale({scaleX, scaleY});
+        }
+    }
+    
+    // Keep old button for bounds checking (invisible)
     sf::RectangleShape mapButton({100.f, 40.f});
-    mapButton.setFillColor(sf::Color(80, 80, 80));
     mapButton.setPosition({690.f, 10.f});
-
-    sf::Text mapButtonText(font, "MAPA", 18);
-    mapButtonText.setFillColor(sf::Color::White);
-    mapButtonText.setPosition({715.f, 18.f});
 
     // --- CENTER TEXT (WHERE YOU ARE) ---
     sf::Text locationText(font);
@@ -215,7 +236,6 @@ int main()
     sf::Color mineTextDefaultColor = sf::Color::White;
     sf::Color furnaceTextDefaultColor = sf::Color::White;
     sf::Color marketTextDefaultColor = sf::Color::White;
-    sf::Color mapButtonTextDefaultColor = sf::Color::White;
     sf::Color hoverColor = sf::Color(255, 200, 100); // Light orange/yellow for hover
 
     // Initialize location modules
@@ -234,12 +254,28 @@ int main()
         mineText.setFillColor(mineTextDefaultColor);
         furnaceText.setFillColor(furnaceTextDefaultColor);
         marketText.setFillColor(marketTextDefaultColor);
-        mapButtonText.setFillColor(mapButtonTextDefaultColor);
 
-        // Apply hover effect to map button text (only when not on map)
-        if (currentLocation != Location::Map && mapButton.getGlobalBounds().contains(mousePos))
+        // Apply hover effect to map button (scale up slightly, only when not on map)
+        if (currentLocation != Location::Map && mapButtonSprite.has_value() && mapButton.getGlobalBounds().contains(mousePos))
         {
-            mapButtonText.setFillColor(hoverColor);
+            sf::Vector2u textureSize = mapButtonTexture.getSize();
+            if (textureSize.x > 0 && textureSize.y > 0)
+            {
+                float scaleX = 100.f / static_cast<float>(textureSize.x);
+                float scaleY = 40.f / static_cast<float>(textureSize.y);
+                mapButtonSprite->setScale({scaleX * 1.05f, scaleY * 1.05f});
+            }
+        }
+        else if (mapButtonSprite.has_value())
+        {
+            // Reset scale
+            sf::Vector2u textureSize = mapButtonTexture.getSize();
+            if (textureSize.x > 0 && textureSize.y > 0)
+            {
+                float scaleX = 100.f / static_cast<float>(textureSize.x);
+                float scaleY = 40.f / static_cast<float>(textureSize.y);
+                mapButtonSprite->setScale({scaleX, scaleY});
+            }
         }
 
         // Update location-specific UI
@@ -276,7 +312,7 @@ int main()
 
             if (event->is<sf::Event::MouseButtonPressed>())
             {
-                // Click MAPA (only when not on map)
+                // Click MAPA button (only when not on map)
                 if (currentLocation != Location::Map && mapButton.getGlobalBounds().contains(mousePos))
                 {
                     currentLocation = Location::Map;
@@ -328,8 +364,8 @@ int main()
         int nextLevelXP = getXPForNextLevel(level);
         statsText.setString(
             "Level: " + std::to_string(level) + " (" + std::to_string(xp) + "/" + std::to_string(nextLevelXP) + ")" +
-            "\nIron: " + std::to_string(collectedIron) +
-            "\nSteel: " + std::to_string(steel) +
+            "\nIron: " + std::to_string(collectedIron) + " kg" +
+            "\nSteel: " + std::to_string(steel) + " kg" +
             "\n$ " + std::to_string(money)
         );
 
@@ -370,13 +406,18 @@ int main()
         }
 
         // UI zawsze
+        // Draw mainbar at top left (on all locations)
+        if (mainbarSprite.has_value())
+        {
+            window.draw(*mainbarSprite);
+        }
+        
         window.draw(statsText);
         
-        // Draw MAPA button only when NOT on map
-        if (currentLocation != Location::Map)
+        // Draw MAP button (using ui-huta.png image) only when NOT on map
+        if (currentLocation != Location::Map && mapButtonSprite.has_value())
         {
-            window.draw(mapButton);
-            window.draw(mapButtonText);
+            window.draw(*mapButtonSprite);
         }
 
         if (currentLocation == Location::Map)
