@@ -14,6 +14,11 @@ static bool kopalniaTitleLoaded = false;
 // Upgrades button and store
 static sf::RectangleShape upgradesButton({100.f, 40.f});
 static std::optional<sf::Text> upgradesButtonText;
+// Upgrade button as image
+static sf::Texture upgradeBtnTexture;
+static bool upgradeBtnTextureLoaded = false;
+static std::optional<sf::Sprite> upgradeBtnSprite;
+static sf::Vector2f upgradeBtnOriginalScale = {1.f, 1.f};
 static bool storeOpen = false;
 
 // Store UI
@@ -47,29 +52,26 @@ enum class ItemType {
 };
 
 struct FallingItem {
-    sf::RectangleShape shape;
+    std::optional<sf::Sprite> sprite;
     float speed;
     bool active;
     ItemType type;
-    
-    FallingItem() : speed(100.f), active(false), type(ItemType::Good) {
-        shape.setSize({30.f, 30.f});
-        shape.setFillColor(sf::Color(139, 69, 19)); // Brown color for iron ore
-        shape.setOutlineColor(sf::Color::White);
-        shape.setOutlineThickness(2.f);
+    float rotation;
+    float rotationSpeed; // degrees per second
+
+    FallingItem() : speed(100.f), active(false), type(ItemType::Good), rotation(0.f), rotationSpeed(0.f) {
+        // sprite texture is assigned later in initMine/setType
     }
-    
-    void setType(ItemType itemType) {
-        type = itemType;
-        if (itemType == ItemType::Bad) {
-            shape.setFillColor(sf::Color(200, 50, 50)); // Red color for bad items
-        } else {
-            shape.setFillColor(sf::Color(139, 69, 19)); // Brown color for good items
-        }
-    }
+
+    void setType(ItemType itemType);
 };
 
 static std::vector<FallingItem> fallingItems;
+// Textures for falling items
+static sf::Texture ironIngotTexture;
+static bool ironIngotTextureLoaded = false;
+static sf::Texture furnaceIconTexture;
+static bool furnaceIconTextureLoaded = false;
 static sf::Clock itemSpawnTimer;
 static const float itemSpawnInterval = 1.5f; // Spawn new item every 1.5 seconds
 static const float itemFallSpeed = 150.f; // Pixels per second
@@ -115,9 +117,30 @@ void initMine(const sf::Font& font)
 
     // Upgrades button (below MAPA button at 690, 10, so below it at 690, 60)
     upgradesButton.setFillColor(sf::Color(80, 80, 80));
-    upgradesButton.setPosition({690.f, 60.f});
+    upgradesButton.setPosition({690.f, 70.f});
 
-    upgradesButtonText = sf::Text(font, "UPGRADES", 16);
+    // Try to load image for upgrades button
+    if (!upgradeBtnTextureLoaded && upgradeBtnTexture.loadFromFile("images/upgrade-btn-icon.png"))
+    {
+        upgradeBtnTextureLoaded = true;
+        upgradeBtnSprite = sf::Sprite(upgradeBtnTexture);
+        // Scale to a square button (use the larger dimension to make a square)
+        sf::Vector2u ts = upgradeBtnTexture.getSize();
+        if (ts.x > 0 && ts.y > 0)
+        {
+            float desiredSize = 72.f; // square size (72x72) — slightly smaller
+            float scale = desiredSize / static_cast<float>(std::max(ts.x, ts.y));
+            upgradeBtnOriginalScale = {scale, scale};
+            upgradeBtnSprite->setScale(upgradeBtnOriginalScale);
+            // Rotate/scale origin to texture center so we can position by center
+            upgradeBtnSprite->setOrigin({ts.x / 2.f, ts.y / 2.f});
+        }
+        // Position sprite centered on the upgrades rectangle area
+        sf::Vector2f rectPos = upgradesButton.getPosition();
+        sf::Vector2f rectSize = upgradesButton.getSize();
+        upgradeBtnSprite->setPosition({rectPos.x + rectSize.x / 2.f, rectPos.y + rectSize.y / 2.f});
+    }
+
     upgradesButtonText->setFillColor(sf::Color::White);
     upgradesButtonText->setOutlineColor(sf::Color::Black);
     upgradesButtonText->setOutlineThickness(1.f);
@@ -189,6 +212,15 @@ void initMine(const sf::Font& font)
     {
         minerWalkingTextureLoaded = true;
     }
+    // Load falling item textures
+    if (!ironIngotTextureLoaded && ironIngotTexture.loadFromFile("images/iron-ingot.png"))
+    {
+        ironIngotTextureLoaded = true;
+    }
+    if (!furnaceIconTextureLoaded && furnaceIconTexture.loadFromFile("images/sulfur.png"))
+    {
+        furnaceIconTextureLoaded = true;
+    }
     
     // Initialize miner sprite with first texture
     if (minerTextureLoaded && !minerSprite.has_value())
@@ -211,6 +243,58 @@ void initMine(const sf::Font& font)
     // Initialize falling items vector with some capacity
     fallingItems.resize(20);
     itemSpawnTimer.restart();
+}
+
+// FallingItem::setType implementation (placed after initMine)
+void FallingItem::setType(ItemType itemType)
+{
+    type = itemType;
+    if (itemType == ItemType::Bad)
+    {
+        if (furnaceIconTextureLoaded)
+        {
+            sprite = sf::Sprite(furnaceIconTexture);
+            sf::Vector2u ts = furnaceIconTexture.getSize();
+            if (ts.x > 0 && ts.y > 0)
+            {
+                float scale = 50.f / static_cast<float>(std::max(ts.x, ts.y));
+                sprite->setScale({scale, scale});
+                // Rotate around texture center
+                sprite->setOrigin({ts.x / 2.f, ts.y / 2.f});
+                // Randomize rotation and rotation speed
+                static std::random_device rd;
+                static std::mt19937 gen(rd());
+                std::uniform_real_distribution<float> rotInitDis(0.f, 360.f);
+                std::uniform_real_distribution<float> rotSpeedDis(-180.f, 180.f);
+                rotation = rotInitDis(gen);
+                rotationSpeed = rotSpeedDis(gen);
+                sprite->setRotation(sf::degrees(rotation));
+            }
+        }
+    }
+    else
+    {
+        if (ironIngotTextureLoaded)
+        {
+            sprite = sf::Sprite(ironIngotTexture);
+            sf::Vector2u ts = ironIngotTexture.getSize();
+            if (ts.x > 0 && ts.y > 0)
+            {
+                float scale = 50.f / static_cast<float>(std::max(ts.x, ts.y));
+                sprite->setScale({scale, scale});
+                // Rotate around texture center
+                sprite->setOrigin({ts.x / 2.f, ts.y / 2.f});
+                // Randomize rotation and rotation speed
+                static std::random_device rd;
+                static std::mt19937 gen(rd());
+                std::uniform_real_distribution<float> rotInitDis(0.f, 360.f);
+                std::uniform_real_distribution<float> rotSpeedDis(-180.f, 180.f);
+                rotation = rotInitDis(gen);
+                rotationSpeed = rotSpeedDis(gen);
+                sprite->setRotation(sf::degrees(rotation));
+            }
+        }
+    }
 }
 
 void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool keyA, bool keyD, long long& collectedIron, int& xp)
@@ -311,14 +395,28 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
         return;
     }
 
-    // Hover effect for upgrades button
-    if (upgradesButton.getGlobalBounds().contains(mousePos))
+    // Hover effect for upgrades button (use sprite if available)
+    if (upgradeBtnSprite.has_value())
     {
-        upgradesButton.setFillColor(sf::Color(100, 100, 100));
+        if (upgradeBtnSprite->getGlobalBounds().contains(mousePos))
+        {
+            upgradeBtnSprite->setScale({upgradeBtnOriginalScale.x * 1.08f, upgradeBtnOriginalScale.y * 1.08f});
+        }
+        else
+        {
+            upgradeBtnSprite->setScale(upgradeBtnOriginalScale);
+        }
     }
     else
     {
-        upgradesButton.setFillColor(sf::Color(80, 80, 80));
+        if (upgradesButton.getGlobalBounds().contains(mousePos))
+        {
+            upgradesButton.setFillColor(sf::Color(100, 100, 100));
+        }
+        else
+        {
+            upgradesButton.setFillColor(sf::Color(80, 80, 80));
+        }
     }
 
     // Update bin speed based on upgrade
@@ -475,12 +573,12 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
             if (!item.active)
             {
                 item.active = true;
-                // Random X position (0 to 770, leaving space for bin width)
-                item.shape.setPosition({posDis(gen), -30.f}); // Start above screen
-                item.speed = itemFallSpeed;
                 // Randomly assign type (80% good, 20% bad)
                 ItemType itemType = (typeDis(gen) == 4) ? ItemType::Bad : ItemType::Good;
+                // Ensure sprite is created for the chosen type, then set position
                 item.setType(itemType);
+                if (item.sprite.has_value()) item.sprite->setPosition({posDis(gen), -30.f}); // Start above screen
+                item.speed = itemFallSpeed;
                 found = true;
                 break;
             }
@@ -491,11 +589,11 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
         {
             FallingItem newItem;
             newItem.active = true;
-            newItem.shape.setPosition({posDis(gen), -30.f});
-            newItem.speed = itemFallSpeed;
             // Randomly assign type (80% good, 20% bad)
             ItemType itemType = (typeDis(gen) == 4) ? ItemType::Bad : ItemType::Good;
             newItem.setType(itemType);
+            if (newItem.sprite.has_value()) newItem.sprite->setPosition({posDis(gen), -30.f});
+            newItem.speed = itemFallSpeed;
             fallingItems.push_back(newItem);
         }
     }
@@ -525,18 +623,25 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
         if (item.active)
         {
             // Move item down
-            sf::Vector2f pos = item.shape.getPosition();
-            pos.y += item.speed * deltaTime;
-            item.shape.setPosition(pos);
+            if (item.sprite.has_value()) {
+                sf::Vector2f pos = item.sprite->getPosition();
+                pos.y += item.speed * deltaTime;
+                item.sprite->setPosition(pos);
+                // Apply rotation per-frame
+                item.sprite->rotate(sf::degrees(item.rotationSpeed * deltaTime));
+            }
 
             // Check collision with bin
-            sf::Vector2f itemPos = item.shape.getPosition();
-            sf::Vector2f itemSize = item.shape.getSize();
-            // Manual collision check using positions and sizes
-            bool collides = (itemPos.x < binPos.x + binSize.x &&
-                           itemPos.x + itemSize.x > binPos.x &&
-                           itemPos.y < binPos.y + binSize.y &&
-                           itemPos.y + itemSize.y > binPos.y);
+            sf::FloatRect itemBounds = item.sprite.has_value() ? item.sprite->getGlobalBounds() : sf::FloatRect();
+            // SFML3 Rect members are `position` and `size` — do manual intersection check
+            float itemPosX = itemBounds.position.x;
+            float itemPosY = itemBounds.position.y;
+            float itemW = itemBounds.size.x;
+            float itemH = itemBounds.size.y;
+            bool collides = (itemPosX < binPos.x + binSize.x &&
+                           itemPosX + itemW > binPos.x &&
+                           itemPosY < binPos.y + binSize.y &&
+                           itemPosY + itemH > binPos.y);
             if (collides)
             {
                 item.active = false;
@@ -579,9 +684,18 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
                 }
             }
             // Remove item if it falls off screen
-            else if (pos.y > 600.f)
+            else
             {
-                item.active = false;
+                float itemY = 0.f;
+                if (item.sprite.has_value())
+                    itemY = item.sprite->getPosition().y;
+                else
+                    itemY = itemBounds.position.y;
+
+                if (itemY > 600.f)
+                {
+                    item.active = false;
+                }
             }
         }
     }
@@ -645,10 +759,17 @@ bool handleMineClick(const sf::Vector2f& mousePos, long long& collectedIron, int
     }
 
     // Handle upgrades button
-    if (!storeOpen && upgradesButton.getGlobalBounds().contains(mousePos))
-    {
-        storeOpen = true;
-        return true;
+    if (!storeOpen) {
+        if (upgradeBtnSprite.has_value() && upgradeBtnSprite->getGlobalBounds().contains(mousePos))
+        {
+            storeOpen = true;
+            return true;
+        }
+        if (upgradesButton.getGlobalBounds().contains(mousePos))
+        {
+            storeOpen = true;
+            return true;
+        }
     }
 
     return false;
@@ -663,7 +784,14 @@ void drawMine(sf::RenderWindow& window, int money)
     }
     
     // Always draw upgrades button
-    window.draw(upgradesButton);
+    if (upgradeBtnSprite.has_value())
+    {
+        window.draw(*upgradeBtnSprite);
+    }
+    else
+    {
+        window.draw(upgradesButton);
+    }
     if (upgradesButtonText.has_value())
         window.draw(*upgradesButtonText);
 
@@ -776,7 +904,8 @@ void drawMine(sf::RenderWindow& window, int money)
         {
             if (item.active)
             {
-                window.draw(item.shape);
+                if (item.sprite.has_value())
+                    window.draw(*item.sprite);
             }
         }
     }

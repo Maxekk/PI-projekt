@@ -180,14 +180,38 @@ int main()
     if (mainbarTexture.loadFromFile("images/UI-mainbar.png"))
     {
         mainbarSprite = sf::Sprite(mainbarTexture);
+        // Scale mainbar to approx 250x70 for consistent UI size
+        sf::Vector2u textureSize = mainbarTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scaleX = 250.f / static_cast<float>(textureSize.x);
+            float scaleY = 120.f / static_cast<float>(textureSize.y);
+            mainbarSprite->setScale({scaleX, scaleY});
+        }
         mainbarSprite->setPosition({0.f, 0.f}); // Top left corner
     }
 
     // --- UI: TOP LEFT (LEVEL + MONEY) ---
-    sf::Text statsText(font);
-    statsText.setCharacterSize(18);
-    statsText.setFillColor(sf::Color::White);
-    statsText.setPosition({10.f, 10.f});
+    sf::Text statsLevelText(font);
+    sf::Text statsIronText(font);
+    sf::Text statsSteelText(font);
+    sf::Text statsMoneyText(font);
+    const float statsCharSize = 18.f;
+    statsLevelText.setCharacterSize(static_cast<unsigned int>(statsCharSize));
+    statsIronText.setCharacterSize(static_cast<unsigned int>(statsCharSize));
+    statsSteelText.setCharacterSize(static_cast<unsigned int>(statsCharSize));
+    statsMoneyText.setCharacterSize(static_cast<unsigned int>(statsCharSize));
+    statsLevelText.setFillColor(sf::Color::White);
+    statsIronText.setFillColor(sf::Color::White);
+    statsSteelText.setFillColor(sf::Color::White);
+    statsMoneyText.setFillColor(sf::Color::White);
+    // Base position and vertical spacing
+    const sf::Vector2f statsBasePos = {10.f, 6.f};
+    const float statsVSpacing = 25.5f; // gap between lines (no '\n')
+    statsLevelText.setPosition(statsBasePos);
+    statsIronText.setPosition({statsBasePos.x, statsBasePos.y + statsVSpacing});
+    statsSteelText.setPosition({statsBasePos.x, statsBasePos.y + statsVSpacing * 2.f});
+    statsMoneyText.setPosition({statsBasePos.x, statsBasePos.y + statsVSpacing * 3.f});
 
     // --- UI: MAP BUTTON (TOP RIGHT)
     sf::Texture mapButtonTexture;
@@ -371,12 +395,10 @@ int main()
 
         // --- UPDATE TEXT ---
         int nextLevelXP = getXPForNextLevel(level);
-        statsText.setString(
-            "Level: " + std::to_string(level) + " (" + std::to_string(xp) + "/" + std::to_string(nextLevelXP) + ")" +
-            "\nIron: " + std::to_string(collectedIron) + " kg" +
-            "\nSteel: " + std::to_string(steel) + " kg" +
-            "\n$ " + std::to_string(money)
-        );
+        statsLevelText.setString("Level: " + std::to_string(level) + " (" + std::to_string(xp) + "/" + std::to_string(nextLevelXP) + ")");
+        statsIronText.setString("Iron: " + std::to_string(collectedIron) + " kg");
+        statsSteelText.setString("Steel: " + std::to_string(steel) + " kg");
+        statsMoneyText.setString("$ " + std::to_string(money));
 
         switch (currentLocation)
         {
@@ -401,7 +423,10 @@ int main()
         {
             window.draw(*mapBgSprite);
         }
-        // Mine location has no background (mini-game uses clear background)
+        else if (currentLocation == Location::Mine && mineBgSprite.has_value())
+        {
+            window.draw(*mineBgSprite);
+        }
         else if (currentLocation == Location::Furnace && furnaceBgSprite.has_value())
         {
             window.draw(*furnaceBgSprite);
@@ -418,7 +443,10 @@ int main()
             window.draw(*mainbarSprite);
         }
         
-        window.draw(statsText);
+        window.draw(statsLevelText);
+        window.draw(statsIronText);
+        window.draw(statsSteelText);
+        window.draw(statsMoneyText);
         
         // Draw MAP button (using ui-huta.png image) only when NOT on map
         if (currentLocation != Location::Map && mapButtonSprite.has_value())
