@@ -4,8 +4,8 @@
 #include <string>
 
 void initMine(const sf::Font& font);
-void updateMine(int mineClicks, const sf::Vector2f& mousePos, int money);
-bool handleMineClick(const sf::Vector2f& mousePos, int& mineClicks, long long& collectedIron, int& money, int& xp);
+void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool keyA, bool keyD, long long& collectedIron, int& xp);
+bool handleMineClick(const sf::Vector2f& mousePos, long long& collectedIron, int& money, int& xp);
 void drawMine(sf::RenderWindow& window, int money);
 
 void initIronworks(const sf::Font& font);
@@ -155,7 +155,6 @@ int main()
     int level = 1;
     int xp = 0; // Experience points
     int money = 200; // Will be used later
-    int mineClicks = 0;
     long long collectedIron = 0; // Iron collected from mine
     long long steel = 0; // Steel produced from iron
 
@@ -243,11 +242,21 @@ int main()
     initIronworks(font);
     initStocks(font);
 
+    // Clock for delta time
+    sf::Clock frameClock;
+
     while (window.isOpen())
     {
+        // Calculate delta time
+        float deltaTime = frameClock.restart().asSeconds();
+        
         // Get mouse position for hover detection
         auto mouse = sf::Mouse::getPosition(window);
         sf::Vector2f mousePos(mouse.x, mouse.y);
+        
+        // Get keyboard input (A and D keys)
+        bool keyA = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::A);
+        bool keyD = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
 
         // --- HOVER DETECTION ---
         // Reset text colors to default
@@ -281,7 +290,7 @@ int main()
         // Update location-specific UI
         if (currentLocation == Location::Mine)
         {
-            updateMine(mineClicks, mousePos, money);
+            updateMine(mousePos, money, deltaTime, keyA, keyD, collectedIron, xp);
         }
         else if (currentLocation == Location::Furnace)
         {
@@ -332,13 +341,13 @@ int main()
                     else if (marketText.getGlobalBounds().contains(mousePos))
                     {
                         currentLocation = Location::Market;
-                    }
                 }
+            }
 
                 // Handle location-specific clicks
                 if (currentLocation == Location::Mine)
                 {
-                    handleMineClick(mousePos, mineClicks, collectedIron, money, xp);
+                    handleMineClick(mousePos, collectedIron, money, xp);
                 }
                 else if (currentLocation == Location::Furnace)
                 {
@@ -392,10 +401,7 @@ int main()
         {
             window.draw(*mapBgSprite);
         }
-        else if (currentLocation == Location::Mine && mineBgSprite.has_value())
-        {
-            window.draw(*mineBgSprite);
-        }
+        // Mine location has no background (mini-game uses clear background)
         else if (currentLocation == Location::Furnace && furnaceBgSprite.has_value())
         {
             window.draw(*furnaceBgSprite);
@@ -453,8 +459,8 @@ int main()
         {
             // Draw location text only for non-mine locations
             if (currentLocation != Location::Mine)
-            {
-                window.draw(locationText);
+        {
+            window.draw(locationText);
             }
             
             // Draw location-specific UI
