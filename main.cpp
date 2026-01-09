@@ -7,6 +7,8 @@ void initMine(const sf::Font& font);
 void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool keyA, bool keyD, long long& collectedIron, int& xp);
 bool handleMineClick(const sf::Vector2f& mousePos, long long& collectedIron, int& money, int& xp);
 void drawMine(sf::RenderWindow& window, int money);
+void playMineMusic();
+void stopMineMusic();
 
 void initIronworks(const sf::Font& font);
 void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel);
@@ -266,6 +268,10 @@ int main()
     initIronworks(font);
     initStocks(font);
 
+    // Start mine music if starting location is Mine
+    if (currentLocation == Location::Mine)
+        playMineMusic();
+
     // Clock for delta time
     sf::Clock frameClock;
 
@@ -338,6 +344,7 @@ int main()
                 marketText.setFillColor(hoverColor);
         }
 
+        Location prevLocation = currentLocation;
         while (const std::optional event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
@@ -382,6 +389,15 @@ int main()
                     handleStocksClick(mousePos);
                 }
             }
+        }
+
+        // If location changed, start/stop mine music accordingly
+        if (prevLocation != currentLocation)
+        {
+            if (prevLocation == Location::Mine && currentLocation != Location::Mine)
+                stopMineMusic();
+            if (currentLocation == Location::Mine && prevLocation != Location::Mine)
+                playMineMusic();
         }
 
         // Check for level up

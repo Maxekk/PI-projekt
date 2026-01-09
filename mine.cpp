@@ -22,28 +22,34 @@ static sf::Vector2f upgradeBtnOriginalScale = {1.f, 1.f};
 static bool storeOpen = false;
 
 // Store UI
-static sf::RectangleShape storeBackground({600.f, 400.f});
+static sf::RectangleShape storeBackground({480.f, 440.f});
 static sf::RectangleShape storeCloseButton({80.f, 40.f});
 static std::optional<sf::Text> storeCloseButtonText;
 static std::optional<sf::Text> storeTitleText;
 
 // Double Click upgrade
 static bool doubleClickPurchased = false;
-static sf::RectangleShape doubleClickButton({250.f, 60.f});
+static sf::RectangleShape doubleClickButton({300.f, 60.f});
 static std::optional<sf::Text> doubleClickButtonText;
 static const int doubleClickCost = 100;
 
 // Critical Hit upgrade
 static bool criticalHitPurchased = false;
-static sf::RectangleShape criticalHitButton({250.f, 60.f});
+static sf::RectangleShape criticalHitButton({300.f, 60.f});
 static std::optional<sf::Text> criticalHitButtonText;
 static const int criticalHitCost = 50;
 
 // Faster Steps upgrade
 static bool fasterStepsPurchased = false;
-static sf::RectangleShape fasterStepsButton({250.f, 60.f});
+static sf::RectangleShape fasterStepsButton({300.f, 60.f});
 static std::optional<sf::Text> fasterStepsButtonText;
 static const int fasterStepsCost = 50;
+
+// Super Ore upgrade
+static bool superOrePurchased = false;
+static sf::RectangleShape superOreButton({300.f, 60.f});
+static std::optional<sf::Text> superOreButtonText;
+static const int superOreCost = 50;
 
 // Mini-game: Falling items
 enum class ItemType {
@@ -58,8 +64,9 @@ struct FallingItem {
     ItemType type;
     float rotation;
     float rotationSpeed; // degrees per second
+    bool isSuperOre; // Whether this is a super ore (10x value) item
 
-    FallingItem() : speed(100.f), active(false), type(ItemType::Good), rotation(0.f), rotationSpeed(0.f) {
+    FallingItem() : speed(100.f), active(false), type(ItemType::Good), rotation(0.f), rotationSpeed(0.f), isSuperOre(false) {
         // sprite texture is assigned later in initMine/setType
     }
 
@@ -72,6 +79,10 @@ static sf::Texture ironIngotTexture;
 static bool ironIngotTextureLoaded = false;
 static sf::Texture furnaceIconTexture;
 static bool furnaceIconTextureLoaded = false;
+// Music for mine theme
+static sf::Music mineMusic;
+static bool mineMusicLoaded = false;
+static bool mineMusicPlaying = false;
 static sf::Clock itemSpawnTimer;
 static const float itemSpawnInterval = 1.5f; // Spawn new item every 1.5 seconds
 static const float itemFallSpeed = 150.f; // Pixels per second
@@ -141,67 +152,75 @@ void initMine(const sf::Font& font)
         upgradeBtnSprite->setPosition({rectPos.x + rectSize.x / 2.f, rectPos.y + rectSize.y / 2.f});
     }
 
-    upgradesButtonText->setFillColor(sf::Color::White);
-    upgradesButtonText->setOutlineColor(sf::Color::Black);
-    upgradesButtonText->setOutlineThickness(1.f);
-    upgradesButtonText->setPosition({695.f, 68.f});
 
     // Store UI
     storeBackground.setFillColor(sf::Color(40, 40, 50));
     storeBackground.setOutlineColor(sf::Color::White);
     storeBackground.setOutlineThickness(3.f);
-    storeBackground.setPosition({100.f, 100.f}); // Centered-ish
+    storeBackground.setPosition({160.f, 70.f}); // Centered
 
     storeCloseButton.setFillColor(sf::Color(150, 50, 50));
-    storeCloseButton.setPosition({610.f, 110.f}); // Top right of store
+    storeCloseButton.setPosition({540.f, 80.f}); // Top right of store
 
     storeCloseButtonText = sf::Text(font, "X", 24);
     storeCloseButtonText->setFillColor(sf::Color::White);
     storeCloseButtonText->setOutlineColor(sf::Color::Black);
     storeCloseButtonText->setOutlineThickness(1.f);
-    storeCloseButtonText->setPosition({635.f, 115.f});
+    storeCloseButtonText->setPosition({565.f, 85.f});
 
     storeTitleText = sf::Text(font, "STORE", 32);
     storeTitleText->setFillColor(sf::Color::White);
     storeTitleText->setOutlineColor(sf::Color::Black);
     storeTitleText->setOutlineThickness(2.f);
-    storeTitleText->setPosition({350.f, 120.f});
+    storeTitleText->setPosition({280.f, 90.f});
 
-    // Double Click upgrade button
+    // Double Click upgrade button (centered horizontally in store)
     doubleClickButton.setFillColor(sf::Color(60, 100, 60));
     doubleClickButton.setOutlineColor(sf::Color::White);
     doubleClickButton.setOutlineThickness(2.f);
-    doubleClickButton.setPosition({175.f, 180.f});
+    doubleClickButton.setPosition({180.f, 160.f});
 
-    doubleClickButtonText = sf::Text(font, "Double Click\nCost: 100$", 20);
+    doubleClickButtonText = sf::Text(font, "Double Click\nCost: 100$", 18);
     doubleClickButtonText->setFillColor(sf::Color::White);
     doubleClickButtonText->setOutlineColor(sf::Color::Black);
     doubleClickButtonText->setOutlineThickness(1.f);
-    doubleClickButtonText->setPosition({200.f, 190.f});
+    doubleClickButtonText->setPosition({200.f, 170.f});
 
     // Critical Hit upgrade button
     criticalHitButton.setFillColor(sf::Color(100, 60, 100));
     criticalHitButton.setOutlineColor(sf::Color::White);
     criticalHitButton.setOutlineThickness(2.f);
-    criticalHitButton.setPosition({175.f, 260.f});
+    criticalHitButton.setPosition({180.f, 235.f});
 
-    criticalHitButtonText = sf::Text(font, "Critical Hit\nCost: 50$", 20);
+    criticalHitButtonText = sf::Text(font, "Critical Hit\nCost: 50$", 18);
     criticalHitButtonText->setFillColor(sf::Color::White);
     criticalHitButtonText->setOutlineColor(sf::Color::Black);
     criticalHitButtonText->setOutlineThickness(1.f);
-    criticalHitButtonText->setPosition({200.f, 270.f});
+    criticalHitButtonText->setPosition({200.f, 245.f});
 
     // Faster Steps upgrade button
     fasterStepsButton.setFillColor(sf::Color(60, 100, 150));
     fasterStepsButton.setOutlineColor(sf::Color::White);
     fasterStepsButton.setOutlineThickness(2.f);
-    fasterStepsButton.setPosition({175.f, 340.f});
+    fasterStepsButton.setPosition({180.f, 310.f});
 
-    fasterStepsButtonText = sf::Text(font, "Faster Steps\nCost: 50$", 20);
+    fasterStepsButtonText = sf::Text(font, "Faster Steps\nCost: 50$", 18);
     fasterStepsButtonText->setFillColor(sf::Color::White);
     fasterStepsButtonText->setOutlineColor(sf::Color::Black);
     fasterStepsButtonText->setOutlineThickness(1.f);
-    fasterStepsButtonText->setPosition({200.f, 350.f});
+    fasterStepsButtonText->setPosition({200.f, 320.f});
+
+    // Super Ore upgrade button
+    superOreButton.setFillColor(sf::Color(150, 100, 60));
+    superOreButton.setOutlineColor(sf::Color::White);
+    superOreButton.setOutlineThickness(2.f);
+    superOreButton.setPosition({180.f, 385.f});
+
+    superOreButtonText = sf::Text(font, "Super Ore\nCost: 50$", 18);
+    superOreButtonText->setFillColor(sf::Color::White);
+    superOreButtonText->setOutlineColor(sf::Color::Black);
+    superOreButtonText->setOutlineThickness(1.f);
+    superOreButtonText->setPosition({200.f, 395.f});
 
     // Load miner textures (both frames for animation)
     if (!minerTextureLoaded && minerTexture.loadFromFile("images/miner.png"))
@@ -220,6 +239,17 @@ void initMine(const sf::Font& font)
     if (!furnaceIconTextureLoaded && furnaceIconTexture.loadFromFile("images/sulfur.png"))
     {
         furnaceIconTextureLoaded = true;
+    }
+    // Load mine theme music (try a few common locations)
+    if (!mineMusicLoaded)
+    {
+        if (mineMusic.openFromFile("sounds/mine-theme.wav") || mineMusic.openFromFile("audio/mine-theme.wav") || mineMusic.openFromFile("mine-theme.wav"))
+        {
+            mineMusicLoaded = true;
+            mineMusic.setLooping(true);
+            // Do not auto-play here; play when entering mine location
+            mineMusicPlaying = false;
+        }
     }
     
     // Initialize miner sprite with first texture
@@ -280,7 +310,9 @@ void FallingItem::setType(ItemType itemType)
             sf::Vector2u ts = ironIngotTexture.getSize();
             if (ts.x > 0 && ts.y > 0)
             {
-                float scale = 50.f / static_cast<float>(std::max(ts.x, ts.y));
+                // Make super ore items 2x larger for visibility
+                float baseScale = isSuperOre ? 100.f : 50.f;
+                float scale = baseScale / static_cast<float>(std::max(ts.x, ts.y));
                 sprite->setScale({scale, scale});
                 // Rotate around texture center
                 sprite->setOrigin({ts.x / 2.f, ts.y / 2.f});
@@ -389,6 +421,33 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
                 else
                 {
                     fasterStepsButton.setFillColor(sf::Color(80, 50, 50));
+                }
+            }
+        }
+
+        // Hover effect for super ore upgrade button
+        if (!superOrePurchased)
+        {
+            if (superOreButton.getGlobalBounds().contains(mousePos))
+            {
+                if (money >= superOreCost)
+                {
+                    superOreButton.setFillColor(sf::Color(180, 130, 80));
+                }
+                else
+                {
+                    superOreButton.setFillColor(sf::Color(100, 60, 60));
+                }
+            }
+            else
+            {
+                if (money >= superOreCost)
+                {
+                    superOreButton.setFillColor(sf::Color(150, 100, 60));
+                }
+                else
+                {
+                    superOreButton.setFillColor(sf::Color(80, 50, 50));
                 }
             }
         }
@@ -564,7 +623,8 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
         static std::random_device rd;
         static std::mt19937 gen(rd());
         std::uniform_real_distribution<float> posDis(0.f, 770.f);
-        std::uniform_int_distribution<> typeDis(0, 4); // 0-3 = good, 4 = bad (20% chance for bad)
+        std::uniform_int_distribution<> typeDis(0, 99); // 0-79 = good, 80-99 = bad (20% chance for bad)
+        std::uniform_int_distribution<> superOreDis(0, 99); // 0-9 = super ore (10% chance if purchased)
         
         // Find an inactive item or create a new one
         bool found = false;
@@ -574,11 +634,25 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
             {
                 item.active = true;
                 // Randomly assign type (80% good, 20% bad)
-                ItemType itemType = (typeDis(gen) == 4) ? ItemType::Bad : ItemType::Good;
-                // Ensure sprite is created for the chosen type, then set position
+                int roll = typeDis(gen);
+                ItemType itemType = (roll >= 80) ? ItemType::Bad : ItemType::Good;
+                
+                // Check for super ore BEFORE calling setType so texture scaling is correct
+                item.isSuperOre = false;
+                if (superOrePurchased && itemType == ItemType::Good)
+                {
+                    int superOreRoll = superOreDis(gen);
+                    if (superOreRoll < 5) // 5% chance
+                    {
+                        item.isSuperOre = true;
+                    }
+                }
+                
+                // Now call setType with isSuperOre already set
                 item.setType(itemType);
                 if (item.sprite.has_value()) item.sprite->setPosition({posDis(gen), -30.f}); // Start above screen
                 item.speed = itemFallSpeed;
+                
                 found = true;
                 break;
             }
@@ -590,10 +664,25 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
             FallingItem newItem;
             newItem.active = true;
             // Randomly assign type (80% good, 20% bad)
-            ItemType itemType = (typeDis(gen) == 4) ? ItemType::Bad : ItemType::Good;
+            int roll = typeDis(gen);
+            ItemType itemType = (roll >= 80) ? ItemType::Bad : ItemType::Good;
+            
+            // Check for super ore BEFORE calling setType so texture scaling is correct
+            newItem.isSuperOre = false;
+            if (superOrePurchased && itemType == ItemType::Good)
+            {
+                int superOreRoll = superOreDis(gen);
+                if (superOreRoll < 5) // 5% chance
+                {
+                    newItem.isSuperOre = true;
+                }
+            }
+            
+            // Now call setType with isSuperOre already set
             newItem.setType(itemType);
             if (newItem.sprite.has_value()) newItem.sprite->setPosition({posDis(gen), -30.f});
             newItem.speed = itemFallSpeed;
+            
             fallingItems.push_back(newItem);
         }
     }
@@ -661,7 +750,13 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
                 {
                     // Good item: increment iron
                     int baseGain = 1;
-                    if (doubleClickPurchased)
+                    
+                    // Check if this is a super ore item (100x value)
+                    if (item.isSuperOre)
+                    {
+                        baseGain = 50;
+                    }
+                    else if (doubleClickPurchased)
                     {
                         baseGain = 2;
                     }
@@ -753,6 +848,22 @@ bool handleMineClick(const sf::Vector2f& mousePos, long long& collectedIron, int
             if (fasterStepsButtonText.has_value())
             {
                 fasterStepsButtonText->setString("Faster Steps\nPURCHASED");
+            }
+            return true;
+        }
+    }
+
+    // Handle super ore upgrade purchase
+    if (storeOpen && !superOrePurchased && superOreButton.getGlobalBounds().contains(mousePos))
+    {
+        if (money >= superOreCost)
+        {
+            money -= superOreCost;
+            superOrePurchased = true;
+            superOreButton.setFillColor(sf::Color(40, 40, 40));
+            if (superOreButtonText.has_value())
+            {
+                superOreButtonText->setString("Super Ore\nPURCHASED");
             }
             return true;
         }
@@ -891,6 +1002,35 @@ void drawMine(sf::RenderWindow& window, int money)
                 window.draw(*fasterStepsButtonText);
             }
         }
+
+        // Draw super ore upgrade button
+        if (!superOrePurchased)
+        {
+            window.draw(superOreButton);
+            if (superOreButtonText.has_value())
+            {
+                // Update text color based on affordability
+                if (money >= superOreCost)
+                {
+                    superOreButtonText->setFillColor(sf::Color::White);
+                }
+                else
+                {
+                    superOreButtonText->setFillColor(sf::Color(200, 150, 150));
+                }
+                window.draw(*superOreButtonText);
+            }
+        }
+        else
+        {
+            // Draw purchased upgrade (grayed out)
+            window.draw(superOreButton);
+            if (superOreButtonText.has_value())
+            {
+                superOreButtonText->setFillColor(sf::Color(150, 150, 150));
+                window.draw(*superOreButtonText);
+            }
+        }
     }
     else
     {
@@ -908,5 +1048,24 @@ void drawMine(sf::RenderWindow& window, int money)
                     window.draw(*item.sprite);
             }
         }
+    }
+}
+
+// Music control for mine theme
+void playMineMusic()
+{
+    if (mineMusicLoaded && !mineMusicPlaying)
+    {
+        mineMusic.play();
+        mineMusicPlaying = true;
+    }
+}
+
+void stopMineMusic()
+{
+    if (mineMusicLoaded && mineMusicPlaying)
+    {
+        mineMusic.stop();
+        mineMusicPlaying = false;
     }
 }
