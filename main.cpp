@@ -11,13 +11,13 @@ void playMineMusic();
 void stopMineMusic();
 
 void initIronworks(const sf::Font& font);
-void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel);
-bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long long& steel);
+void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel, int& money);
+bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long long& steel, int& money);
 void drawIronworks(sf::RenderWindow& window);
 
 void initStocks(const sf::Font& font);
-void updateStocks(const sf::Vector2f& mousePos);
-bool handleStocksClick(const sf::Vector2f& mousePos);
+void updateStocks(const sf::Vector2f& mousePos, long long& steel, int& money);
+bool handleStocksClick(const sf::Vector2f& mousePos, long long& steel, int& money);
 void drawStocks(sf::RenderWindow& window);
 
 enum class Location {
@@ -324,11 +324,11 @@ int main()
         }
         else if (currentLocation == Location::Furnace)
         {
-            updateIronworks(mousePos, collectedIron, steel);
+            updateIronworks(mousePos, collectedIron, steel, money);
         }
         else if (currentLocation == Location::Market)
         {
-            updateStocks(mousePos);
+            updateStocks(mousePos, steel, money);
         }
 
         // Apply hover effects to map location texts when on map
@@ -382,11 +382,11 @@ int main()
                 }
                 else if (currentLocation == Location::Furnace)
                 {
-                    handleIronworksClick(mousePos, collectedIron, steel);
+                    handleIronworksClick(mousePos, collectedIron, steel, money);
                 }
                 else if (currentLocation == Location::Market)
                 {
-                    handleStocksClick(mousePos);
+                    handleStocksClick(mousePos, steel, money);
                 }
             }
         }

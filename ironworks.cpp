@@ -3,119 +3,237 @@
 #include <optional>
 #include <string>
 
-static sf::RectangleShape furnaceButton({260.f, 80.f});
-static std::optional<sf::Text> furnaceButtonText;
-static std::optional<sf::Text> furnaceInfoText;
-static bool isworking = false;
-static sf::Clock workclock;
-static const float worktime = 20.0f;
-static const int ironcost = 10;
-static const int steelReward = 10; // 10 iron = 10 steel
+// 40 Fe -> 4 Steel (30s)
+static const int BATCH_1_IRON = 40;
+static const float BATCH_1_TIME = 30.0f;
+
+// 80 Fe -> 8 Steel (25s)
+static const int BATCH_2_IRON = 80;
+static const float BATCH_2_TIME = 25.0f;
+
+// 120 Fe -> 12 Steel (15s)
+static const int BATCH_3_IRON = 120;
+static const float BATCH_3_TIME = 15.0f;
+
+// work cost -> 10
+static const int OP_COST = 10;
+
+// UI Elements
+static sf::RectangleShape btnSmall({260.f, 60.f});
+static sf::RectangleShape btnMedium({260.f, 60.f});
+static sf::RectangleShape btnLarge({260.f, 60.f});
+
+static std::optional<sf::Text> txtSmall;
+static std::optional<sf::Text> txtMedium;
+static std::optional<sf::Text> txtLarge;
+static std::optional<sf::Text> infoText;
 
 // HUTA title image at top center
 static sf::Texture hutaTitleTexture;
 static std::optional<sf::Sprite> hutaTitleSprite;
 static bool hutaTitleLoaded = false;
 
+// --- UK FLAG EASTER EGG VARIABLES ---
+static sf::Texture ukFlagTexture;
+static std::optional<sf::Sprite> ukFlagSprite;
+static bool ukFlagLoaded = false;
+static bool britishBonusCollected = false; // Has the bonus been claimed?
+static std::optional<sf::Text> bonusMessageText;
+static sf::Clock bonusMessageTimer; // Timer to hide the message
+
+// Logic Variables
+static bool isWorking = false;
+static sf::Clock workClock;
+static float currentTotalTime = 0.0f;
+static int currentBatchIron = 0;
+
 void initIronworks(const sf::Font& font)
 {
-    if (furnaceButtonText.has_value() && hutaTitleLoaded) return;
+    if (txtSmall.has_value() && hutaTitleLoaded && ukFlagLoaded) return;
 
     // Load HUTA title image
     if (!hutaTitleLoaded && hutaTitleTexture.loadFromFile("images/ui-huta.png"))
     {
-        hutaTitleSprite = sf::Sprite(hutaTitleTexture);
-        // Position at top center (window is 800 wide, so center is 400)
-        // Make it pretty big - around 400 pixels wide
-        sf::Vector2u textureSize = hutaTitleTexture.getSize();
-        if (textureSize.x > 0 && textureSize.y > 0)
-        {
-            float scaleX = 400.f / static_cast<float>(textureSize.x);
-            float scaleY = scaleX; // Maintain aspect ratio
-            hutaTitleSprite->setScale({scaleX, scaleY});
-            // Center horizontally: (800 - (textureSize.x * scaleX)) / 2
-            float scaledWidth = textureSize.x * scaleX;
-            float xPos = (800.f - scaledWidth) / 2.f;
-            hutaTitleSprite->setPosition({xPos, 20.f});
+        hutaTitleSprite.emplace(hutaTitleTexture);
+        sf::Vector2u ts = hutaTitleTexture.getSize();
+        if (ts.x > 0) {
+            float scale = 400.f / (float)ts.x;
+            hutaTitleSprite->setScale({scale, scale});
+            hutaTitleSprite->setPosition({(800.f - ts.x * scale) / 2.f, 20.f});
         }
         hutaTitleLoaded = true;
     }
 
-    if (furnaceButtonText.has_value()) return;
+    // uk flag init
+    if (!ukFlagLoaded) {
+        if (ukFlagTexture.loadFromFile("images/uk-flag.png")) {
+            ukFlagSprite.emplace(ukFlagTexture);
+            // Scale to approx 60x30 pixels
+            sf::Vector2u ts = ukFlagTexture.getSize();
+            if (ts.x > 0 && ts.y > 0) {
+                ukFlagSprite->setScale({60.f / ts.x, 30.f / ts.y});
+            }
+            // Position under the Map button (Map button is approx at 690, 10, height 40)
+            if (ukFlagSprite) ukFlagSprite->setPosition({710.f, 60.f});
+        }
+        ukFlagLoaded = true;
+    }
 
-    furnaceButton.setFillColor(sf::Color(150, 50, 50));
-    furnaceButton.setPosition({270.f, 350.f});
-    furnaceButton.setOutlineColor(sf::Color::White);
-    furnaceButton.setOutlineThickness(2.f);
+    if (!bonusMessageText.has_value()) {
+        bonusMessageText.emplace(font, "Zachowales sie jak Anglicy, otrzymujesz 50$", 20);
+        bonusMessageText->setFillColor(sf::Color::Green);
+        bonusMessageText->setOutlineColor(sf::Color::Black);
+        bonusMessageText->setOutlineThickness(1.f);
+        // Center the message roughly
+        bonusMessageText->setPosition({180.f, 530.f});
+    }
 
-    // POPRAWKA: Najpierw FONT, potem TEKST (wymóg SFML 3.0)
-    furnaceButtonText.emplace(font, "Przetop", 24);
-    furnaceButtonText->setFillColor(sf::Color::White);
-    furnaceButtonText->setPosition({330.f, 375.f});
+    float startX = 270.f;
+    float startY = 180.f; // Przesunięte nieco wyżej
+    float gap = 85.f;     // Odstęp między przyciskami
 
-    // POPRAWKA: Najpierw FONT, potem TEKST
-    furnaceInfoText.emplace(font, "Piec gotowy.", 24);
-    furnaceInfoText->setFillColor(sf::Color::Yellow);
-    furnaceInfoText->setPosition({280.f, 300.f});
+    // Button 1
+    btnSmall.setPosition({startX, startY});
+    btnSmall.setOutlineThickness(2.f);
+    txtSmall.emplace(font, "Maly (40 Fe -> 30s)", 20);
+    txtSmall->setPosition({startX + 20.f, startY + 18.f});
+
+    // Button 2
+    btnMedium.setPosition({startX, startY + gap});
+    btnMedium.setOutlineThickness(2.f);
+    txtMedium.emplace(font, "Sredni (80 Fe -> 25s)", 20);
+    txtMedium->setPosition({startX + 20.f, startY + gap + 18.f});
+
+    // Button 3
+    btnLarge.setPosition({startX, startY + gap * 2});
+    btnLarge.setOutlineThickness(2.f);
+    txtLarge.emplace(font, "Duzy (120 Fe -> 15s)", 20);
+    txtLarge->setPosition({startX + 20.f, startY + gap * 2 + 18.f});
+
+    // Info text at bottom
+    infoText.emplace(font, "Koszt startu: $10. Wybierz wsad.", 24);
+    infoText->setFillColor(sf::Color::Yellow);
+    infoText->setPosition({240.f, 460.f});
 }
 
-void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel)
+// Requires: money for cost check
+void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel, int& money) 
 {
-    if (isworking)
+    // uk flag effect
+    if (ukFlagSprite && !britishBonusCollected) {
+        if (ukFlagSprite->getGlobalBounds().contains(mousePos)) {
+             // Semi-transparent when hovered
+             ukFlagSprite->setColor(sf::Color(255, 255, 255, 200)); 
+        } else {
+             ukFlagSprite->setColor(sf::Color::White);
+        }
+    } else if (ukFlagSprite && britishBonusCollected) {
+         // Dimmed if already collected
+         ukFlagSprite->setColor(sf::Color(100, 100, 100, 100)); 
+    }
+
+    if (isWorking)
     {
-        float elapsed = workclock.getElapsedTime().asSeconds();
-        if (elapsed >= worktime)
+        float elapsed = workClock.getElapsedTime().asSeconds();
+        
+        if (elapsed >= currentTotalTime)
         {
-            // Koniec czasu
-            isworking = false;
-            steel += steelReward; // Give steel instead of money
-            if (furnaceInfoText) furnaceInfoText->setString("Przetop gotowy! +" + std::to_string(steelReward) + " steel");
-            furnaceButton.setFillColor(sf::Color(150, 50, 50)); // Reset koloru
+            // Finish: 120 Fe -> 12 Steel (10% conversion)
+            isWorking = false;
+            long long steelGained = currentBatchIron / 10; 
+            steel += steelGained;
+
+            if (infoText) infoText->setString("Gotowe! Otrzymano " + std::to_string(steelGained) + " Stali");
         }
         else
         {
-            // W trakcie odliczania
-            float remaining = worktime - elapsed;
-            if (furnaceInfoText) furnaceInfoText->setString("Przetapianie... " + std::to_string((int)remaining) + "s");
-            furnaceButton.setFillColor(sf::Color(100, 30, 30)); // Ciemniejszy kolor
+            // Working: Countdown timer
+            float remaining = currentTotalTime - elapsed;
+            if (infoText) infoText->setString("Przetapianie... " + std::to_string((int)remaining) + "s");
+            
+            // Gray out buttons while working
+            btnSmall.setFillColor(sf::Color(50, 50, 50));
+            btnMedium.setFillColor(sf::Color(50, 50, 50));
+            btnLarge.setFillColor(sf::Color(50, 50, 50));
         }
     }
-    else 
+    else
     {
-        // Stan spoczynku - obsługa hover
-        if (furnaceButton.getGlobalBounds().contains(mousePos))
-             furnaceButton.setFillColor(sf::Color(200, 70, 70));
-        else furnaceButton.setFillColor(sf::Color(150, 50, 50));
-        
-        if (furnaceInfoText && iron < ironcost)
-             furnaceInfoText->setString("Brak rudy! (Wymagane: " + std::to_string(ironcost) + ")");
-        else if (furnaceInfoText)
-             furnaceInfoText->setString("Gotowy do przetopu.");
+        // check affordability 
+        auto updateBtn = [&](sf::RectangleShape& btn, int costIron) {
+            bool canAfford = (money >= OP_COST && iron >= costIron);
+            
+            if (btn.getGlobalBounds().contains(mousePos)) {
+                // Hover effect
+                btn.setFillColor(canAfford ? sf::Color(200, 80, 80) : sf::Color(80, 40, 40));
+            } else {
+                // Normal state
+                btn.setFillColor(canAfford ? sf::Color(150, 50, 50) : sf::Color(60, 60, 60));
+            }
+        };
+
+        updateBtn(btnSmall, BATCH_1_IRON);
+        updateBtn(btnMedium, BATCH_2_IRON);
+        updateBtn(btnLarge, BATCH_3_IRON);
+
+        if (infoText) infoText->setString("Wybierz opcje (Koszt startu: $10)");
     }
 }
 
-bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long long& steel)
+// Handle clicks: Start batch if affordable
+bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long long& steel, int& money)
 {
-    // Klikamy tylko, gdy NIE pracuje i mamy surowce
-    if (!isworking && iron >= ironcost && furnaceButton.getGlobalBounds().contains(mousePos))
-    {
-        iron -= ironcost; // Pobierz opłatę
-        isworking = true;       // Uruchom maszynę
-        workclock.restart();    // Resetuj stoper
-        return true;
+    // UK flag click
+    if (ukFlagSprite && !britishBonusCollected && ukFlagSprite->getGlobalBounds().contains(mousePos)) {
+        money += 50;
+        britishBonusCollected = true;
+        bonusMessageTimer.restart(); // Start timer to show message
+        return true; 
     }
+
+    if (isWorking) return false;
+
+    // Helper to process click for a specific button
+    auto tryClick = [&](sf::RectangleShape& btn, int ironReq, float timeReq) {
+        if (btn.getGlobalBounds().contains(mousePos)) {
+            if (money >= OP_COST && iron >= ironReq) {
+                // Deduct: $10 + Iron Batch
+                money -= OP_COST;
+                iron -= ironReq;
+                
+                // Start Timer: 30s/25s/15s
+                currentBatchIron = ironReq;
+                currentTotalTime = timeReq;
+                isWorking = true;
+                workClock.restart();
+                return true;
+            }
+        }
+        return false;
+    };
+
+    if (tryClick(btnSmall, BATCH_1_IRON, BATCH_1_TIME)) return true;
+    if (tryClick(btnMedium, BATCH_2_IRON, BATCH_2_TIME)) return true;
+    if (tryClick(btnLarge, BATCH_3_IRON, BATCH_3_TIME)) return true;
+
     return false;
 }
 
 void drawIronworks(sf::RenderWindow& window)
 {
-    // Draw HUTA title at top center
-    if (hutaTitleSprite.has_value())
-    {
-        window.draw(*hutaTitleSprite);
-    }
+    if (hutaTitleSprite) window.draw(*hutaTitleSprite);
     
-    window.draw(furnaceButton);
-    if (furnaceButtonText) window.draw(*furnaceButtonText);
-    if (furnaceInfoText) window.draw(*furnaceInfoText);
+    //UK flag
+    if (ukFlagSprite) window.draw(*ukFlagSprite);
+
+    // Easteregg
+    if (britishBonusCollected && bonusMessageTimer.getElapsedTime().asSeconds() < 3.0f) {
+        if (bonusMessageText) window.draw(*bonusMessageText);
+    }
+
+    window.draw(btnSmall); if (txtSmall) window.draw(*txtSmall);
+    window.draw(btnMedium); if (txtMedium) window.draw(*txtMedium);
+    window.draw(btnLarge); if (txtLarge) window.draw(*txtLarge);
+    
+    if (infoText) window.draw(*infoText);
 }
