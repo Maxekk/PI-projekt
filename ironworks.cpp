@@ -103,7 +103,7 @@ void initIronworks(const sf::Font& font)
                 ukFlagSprite->setScale({60.f / ts.x, 30.f / ts.y});
             }
             // Position under the Map button (Map button is approx at 690, 10, height 40)
-            if (ukFlagSprite) ukFlagSprite->setPosition({710.f, 60.f});
+            if (ukFlagSprite) ukFlagSprite->setPosition({710.f, 140.f});
         }
         ukFlagLoaded = true;
     }

@@ -828,24 +828,6 @@ int main()
         prevSteel = steel;
         prevMoney = money;
 
-        switch (currentLocation)
-        {
-            case Location::StartMenu:
-                locationText.setString("MENU");
-                break;
-            case Location::Mine:
-                locationText.setString("KOPALNIA");
-                break;
-            case Location::Furnace:
-                locationText.setString("HUTA");
-                break;
-            case Location::Market:
-                locationText.setString("GIELDA");
-                break;
-            case Location::Map:
-                locationText.setString("MAPA");
-                break;
-        }
 
         window.clear(sf::Color(30, 30, 30));
 
