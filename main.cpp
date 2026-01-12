@@ -9,11 +9,15 @@ bool handleMineClick(const sf::Vector2f& mousePos, long long& collectedIron, int
 void drawMine(sf::RenderWindow& window, int money);
 void playMineMusic();
 void stopMineMusic();
+void playIronworksMusic();
+void stopIronworksMusic();
+void playStocksMusic();
+void stopStocksMusic();
 
 void initIronworks(const sf::Font& font);
 void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel, int& money);
 bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long long& steel, int& money);
-void drawIronworks(sf::RenderWindow& window);
+void drawIronworks(sf::RenderWindow& window, int money);
 
 void initStocks(const sf::Font& font);
 void updateStocks(const sf::Vector2f& mousePos, long long& steel, int& money);
@@ -21,6 +25,7 @@ bool handleStocksClick(const sf::Vector2f& mousePos, long long& steel, int& mone
 void drawStocks(sf::RenderWindow& window);
 
 enum class Location {
+    StartMenu,
     Mine,
     Furnace,
     Market,
@@ -85,6 +90,40 @@ int main()
             float scaleY = 600.f / static_cast<float>(textureSize.y);
             furnaceBgSprite->setScale({scaleX, scaleY});
             furnaceBgSprite->setPosition({0.f, 0.f});
+        }
+    }
+
+    // Menu background (wide image with horizontal panning)
+    sf::Texture menuBgTexture;
+    std::optional<sf::Sprite> menuBgSprite;
+    float menuPanPosX = 0.f;
+    float menuPanMinX = 0.f;
+    float menuPanMaxX = 0.f;
+    float menuPanSpeed = 20.f; // pixels per second
+    int menuPanDir = 1; // 1 = move right (towards 0), -1 = move left (towards min)
+    if (menuBgTexture.loadFromFile("images/menu-bg.jpg"))
+    {
+        menuBgSprite = sf::Sprite(menuBgTexture);
+        sf::Vector2u ts = menuBgTexture.getSize();
+        if (ts.x > 0 && ts.y > 0)
+        {
+            // Scale to fit window height and allow horizontal panning
+            float scale = 600.f / static_cast<float>(ts.y);
+            menuBgSprite->setScale({scale, scale});
+            float scaledWidth = ts.x * scale;
+            // If image wider than window, enable panning between [800 - scaledWidth, 0]
+            if (scaledWidth > 800.f)
+            {
+                menuPanMinX = 800.f - scaledWidth;
+                menuPanMaxX = 0.f;
+            }
+            else
+            {
+                // Center if smaller
+                menuPanMinX = menuPanMaxX = (800.f - scaledWidth) / 2.f;
+            }
+            menuPanPosX = menuPanMinX;
+            menuBgSprite->setPosition({menuPanPosX, 0.f});
         }
     }
 
@@ -153,7 +192,7 @@ int main()
     }
 
     // --- GAME STATE ---
-    Location currentLocation = Location::Mine;
+    Location currentLocation = Location::StartMenu;
     int level = 1;
     int xp = 0; // Experience points
     int money = 200; // Will be used later
@@ -193,6 +232,52 @@ int main()
         mainbarSprite->setPosition({0.f, 0.f}); // Top left corner
     }
 
+    // --- UI: STATS ICONS ---
+    const float statsIconSize = 20.f; // Size for stat icons
+    const float statsIconTextSpacing = 5.f; // Space between icon and text
+    
+    // Iron icon
+    sf::Texture ironIconTexture;
+    std::optional<sf::Sprite> ironIconSprite;
+    if (ironIconTexture.loadFromFile("images/iron-ingot.png"))
+    {
+        ironIconSprite = sf::Sprite(ironIconTexture);
+        sf::Vector2u textureSize = ironIconTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scale = statsIconSize / static_cast<float>(std::max(textureSize.x, textureSize.y));
+            ironIconSprite->setScale({scale, scale});
+        }
+    }
+    
+    // Steel icon
+    sf::Texture steelIconTexture;
+    std::optional<sf::Sprite> steelIconSprite;
+    if (steelIconTexture.loadFromFile("images/steel-icon.png"))
+    {
+        steelIconSprite = sf::Sprite(steelIconTexture);
+        sf::Vector2u textureSize = steelIconTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scale = statsIconSize / static_cast<float>(std::max(textureSize.x, textureSize.y));
+            steelIconSprite->setScale({scale, scale});
+        }
+    }
+    
+    // Cash icon
+    sf::Texture cashIconTexture;
+    std::optional<sf::Sprite> cashIconSprite;
+    if (cashIconTexture.loadFromFile("images/cash-icon.png"))
+    {
+        cashIconSprite = sf::Sprite(cashIconTexture);
+        sf::Vector2u textureSize = cashIconTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scale = statsIconSize / static_cast<float>(std::max(textureSize.x, textureSize.y));
+            cashIconSprite->setScale({scale, scale});
+        }
+    }
+
     // --- UI: TOP LEFT (LEVEL + MONEY) ---
     sf::Text statsLevelText(font);
     sf::Text statsIronText(font);
@@ -210,10 +295,12 @@ int main()
     // Base position and vertical spacing
     const sf::Vector2f statsBasePos = {10.f, 6.f};
     const float statsVSpacing = 25.5f; // gap between lines (no '\n')
+    const float statsIconX = statsBasePos.x; // X position for icons
     statsLevelText.setPosition(statsBasePos);
-    statsIronText.setPosition({statsBasePos.x, statsBasePos.y + statsVSpacing});
-    statsSteelText.setPosition({statsBasePos.x, statsBasePos.y + statsVSpacing * 2.f});
-    statsMoneyText.setPosition({statsBasePos.x, statsBasePos.y + statsVSpacing * 3.f});
+    // Text positions adjusted to be after icons
+    statsIronText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing});
+    statsSteelText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing * 2.f});
+    statsMoneyText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing * 3.f + 4.f});
 
     // --- UI: MAP BUTTON (TOP RIGHT)
     sf::Texture mapButtonTexture;
@@ -263,6 +350,45 @@ int main()
     sf::Color marketTextDefaultColor = sf::Color::White;
     sf::Color hoverColor = sf::Color(255, 200, 100); // Light orange/yellow for hover
 
+    // --- START MENU UI ---
+    sf::RectangleShape playButton({200.f, 60.f});
+    playButton.setPosition({300.f, 200.f});
+    playButton.setFillColor(sf::Color(100, 100, 100));
+
+    sf::RectangleShape quitButton({200.f, 60.f});
+    quitButton.setPosition({300.f, 300.f});
+    quitButton.setFillColor(sf::Color(100, 100, 100));
+
+    sf::Text titleText(font);
+    titleText.setString("KLIKER - HUTA");
+    titleText.setCharacterSize(48);
+    titleText.setFillColor(sf::Color::White);
+    // center title horizontally and approximate vertical center using character size
+    {
+        sf::FloatRect b = titleText.getLocalBounds();
+        titleText.setPosition(sf::Vector2f{400.f - b.size.x / 2.f, 100.f - b.size.y / 2.f});
+    }
+
+    sf::Text playText(font);
+    playText.setString("Play");
+    playText.setCharacterSize(28);
+    playText.setFillColor(sf::Color::White);
+    {
+        sf::FloatRect b = playText.getLocalBounds();
+        playText.setPosition(sf::Vector2f{playButton.getPosition().x + playButton.getSize().x / 2.f - b.size.x / 2.f,
+                     playButton.getPosition().y + playButton.getSize().y / 2.f - b.size.y / 2.f});
+    }
+
+    sf::Text quitText(font);
+    quitText.setString("Quit");
+    quitText.setCharacterSize(28);
+    quitText.setFillColor(sf::Color::White);
+    {
+        sf::FloatRect b = quitText.getLocalBounds();
+        quitText.setPosition(sf::Vector2f{quitButton.getPosition().x + quitButton.getSize().x / 2.f - b.size.x / 2.f,
+                     quitButton.getPosition().y + quitButton.getSize().y / 2.f - b.size.y / 2.f});
+    }
+
     // Initialize location modules
     initMine(font);
     initIronworks(font);
@@ -294,8 +420,8 @@ int main()
         furnaceText.setFillColor(furnaceTextDefaultColor);
         marketText.setFillColor(marketTextDefaultColor);
 
-        // Apply hover effect to map button (scale up slightly, only when not on map)
-        if (currentLocation != Location::Map && mapButtonSprite.has_value() && mapButton.getGlobalBounds().contains(mousePos))
+        // Apply hover effect to map button (scale up slightly, only when not on map or menu)
+        if (currentLocation != Location::Map && currentLocation != Location::StartMenu && mapButtonSprite.has_value() && mapButton.getGlobalBounds().contains(mousePos))
         {
             sf::Vector2u textureSize = mapButtonTexture.getSize();
             if (textureSize.x > 0 && textureSize.y > 0)
@@ -314,6 +440,46 @@ int main()
                 float scaleX = 100.f / static_cast<float>(textureSize.x);
                 float scaleY = 40.f / static_cast<float>(textureSize.y);
                 mapButtonSprite->setScale({scaleX, scaleY});
+            }
+        }
+
+        // Start menu hover colors
+        if (currentLocation == Location::StartMenu)
+        {
+            if (playButton.getGlobalBounds().contains(mousePos))
+                playButton.setFillColor(sf::Color(150,150,150));
+            else
+                playButton.setFillColor(sf::Color(100,100,100));
+
+            if (quitButton.getGlobalBounds().contains(mousePos))
+                quitButton.setFillColor(sf::Color(150,150,150));
+            else
+                quitButton.setFillColor(sf::Color(100,100,100));
+        }
+
+        // Update menu background panning when on Start Menu
+        if (currentLocation == Location::StartMenu && menuBgSprite.has_value())
+        {
+            // Only pan if there is a range to pan
+            if (menuPanMinX < menuPanMaxX)
+            {
+                menuPanPosX += menuPanDir * menuPanSpeed * deltaTime;
+                if (menuPanPosX <= menuPanMinX)
+                {
+                    menuPanPosX = menuPanMinX;
+                    menuPanDir = 1;
+                }
+                else if (menuPanPosX >= menuPanMaxX)
+                {
+                    menuPanPosX = menuPanMaxX;
+                    menuPanDir = -1;
+                }
+                menuBgSprite->setPosition({menuPanPosX, 0.f});
+            }
+            else
+            {
+                // static centered
+                menuBgSprite->setPosition({menuPanMinX, 0.f});
             }
         }
 
@@ -352,8 +518,22 @@ int main()
 
             if (event->is<sf::Event::MouseButtonPressed>())
             {
-                // Click MAPA button (only when not on map)
-                if (currentLocation != Location::Map && mapButton.getGlobalBounds().contains(mousePos))
+                // If on Start Menu, handle Play/Quit and skip other clicks
+                if (currentLocation == Location::StartMenu)
+                {
+                    if (playButton.getGlobalBounds().contains(mousePos))
+                    {
+                        currentLocation = Location::Mine;
+                    }
+                    else if (quitButton.getGlobalBounds().contains(mousePos))
+                    {
+                        window.close();
+                    }
+                    continue;
+                }
+
+                // Click MAPA button (only when not on map or menu)
+                if (currentLocation != Location::Map && currentLocation != Location::StartMenu && mapButton.getGlobalBounds().contains(mousePos))
                 {
                     currentLocation = Location::Map;
                 }
@@ -391,13 +571,22 @@ int main()
             }
         }
 
-        // If location changed, start/stop mine music accordingly
+        // If location changed, start/stop location music accordingly
         if (prevLocation != currentLocation)
         {
             if (prevLocation == Location::Mine && currentLocation != Location::Mine)
                 stopMineMusic();
+            if (prevLocation == Location::Furnace && currentLocation != Location::Furnace)
+                stopIronworksMusic();
+            if (prevLocation == Location::Market && currentLocation != Location::Market)
+                stopStocksMusic();
+
             if (currentLocation == Location::Mine && prevLocation != Location::Mine)
                 playMineMusic();
+            if (currentLocation == Location::Furnace && prevLocation != Location::Furnace)
+                playIronworksMusic();
+            if (currentLocation == Location::Market && prevLocation != Location::Market)
+                playStocksMusic();
         }
 
         // Check for level up
@@ -412,12 +601,15 @@ int main()
         // --- UPDATE TEXT ---
         int nextLevelXP = getXPForNextLevel(level);
         statsLevelText.setString("Level: " + std::to_string(level) + " (" + std::to_string(xp) + "/" + std::to_string(nextLevelXP) + ")");
-        statsIronText.setString("Iron: " + std::to_string(collectedIron) + " kg");
-        statsSteelText.setString("Steel: " + std::to_string(steel) + " kg");
-        statsMoneyText.setString("$ " + std::to_string(money));
+        statsIronText.setString(": " + std::to_string(collectedIron) + " kg");
+        statsSteelText.setString(": " + std::to_string(steel) + " kg");
+        statsMoneyText.setString(": " + std::to_string(money));
 
         switch (currentLocation)
         {
+            case Location::StartMenu:
+                locationText.setString("MENU");
+                break;
             case Location::Mine:
                 locationText.setString("KOPALNIA");
                 break;
@@ -433,6 +625,26 @@ int main()
         }
 
         window.clear(sf::Color(30, 30, 30));
+
+        // If we're on the Start Menu, draw menu UI and skip location rendering
+        if (currentLocation == Location::StartMenu)
+        {
+            if (menuBgSprite.has_value())
+            {
+                window.draw(*menuBgSprite);
+            }
+            else if (furnaceBgSprite.has_value())
+            {
+                window.draw(*furnaceBgSprite);
+            }
+            window.draw(titleText);
+            window.draw(playButton);
+            window.draw(playText);
+            window.draw(quitButton);
+            window.draw(quitText);
+            window.display();
+            continue;
+        }
 
         // Draw background based on current location
         if (currentLocation == Location::Map && mapBgSprite.has_value())
@@ -460,12 +672,33 @@ int main()
         }
         
         window.draw(statsLevelText);
+        
+        // Draw iron icon and text
+        if (ironIconSprite.has_value())
+        {
+            ironIconSprite->setPosition({statsIconX, statsBasePos.y + statsVSpacing});
+            window.draw(*ironIconSprite);
+        }
         window.draw(statsIronText);
+        
+        // Draw steel icon and text
+        if (steelIconSprite.has_value())
+        {
+            steelIconSprite->setPosition({statsIconX, statsBasePos.y + statsVSpacing * 2.f});
+            window.draw(*steelIconSprite);
+        }
         window.draw(statsSteelText);
+        
+        // Draw cash icon and text
+            if (cashIconSprite.has_value())
+            {
+                cashIconSprite->setPosition({statsIconX, statsBasePos.y + statsVSpacing * 3.f + 4.f});
+                window.draw(*cashIconSprite);
+            }
         window.draw(statsMoneyText);
         
-        // Draw MAP button (using ui-huta.png image) only when NOT on map
-        if (currentLocation != Location::Map && mapButtonSprite.has_value())
+        // Draw MAP button (using ui-huta.png image) only when NOT on map or menu
+        if (currentLocation != Location::Map && currentLocation != Location::StartMenu && mapButtonSprite.has_value())
         {
             window.draw(*mapButtonSprite);
         }
@@ -514,7 +747,7 @@ int main()
             }
             else if (currentLocation == Location::Furnace)
             {
-                drawIronworks(window);
+                drawIronworks(window, money);
             }
             else if (currentLocation == Location::Market)
             {

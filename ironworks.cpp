@@ -1,7 +1,9 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <optional>
 #include <string>
+#include <algorithm>
 
 // 40 Fe -> 4 Steel (30s)
 static const int BATCH_1_IRON = 40;
@@ -28,6 +30,27 @@ static std::optional<sf::Text> txtMedium;
 static std::optional<sf::Text> txtLarge;
 static std::optional<sf::Text> infoText;
 
+// Upgrades button and store (copied from mine)
+static sf::RectangleShape upgradesButton({100.f, 40.f});
+static std::optional<sf::Text> upgradesButtonText;
+static sf::Texture upgradeBtnTexture;
+static bool upgradeBtnTextureLoaded = false;
+static std::optional<sf::Sprite> upgradeBtnSprite;
+static sf::Vector2f upgradeBtnOriginalScale = {1.f, 1.f};
+static bool storeOpen = false;
+
+// Store UI
+static sf::RectangleShape storeBackground({480.f, 440.f});
+static sf::RectangleShape storeCloseButton({80.f, 40.f});
+static std::optional<sf::Text> storeCloseButtonText;
+static std::optional<sf::Text> storeTitleText;
+
+// Efficient Melting upgrade (reduces melting time by 50%)
+static bool efficientMeltingPurchased = false;
+static sf::RectangleShape efficientMeltingButton({300.f, 60.f});
+static std::optional<sf::Text> efficientMeltingButtonText;
+static const int efficientMeltingCost = 100;
+
 // HUTA title image at top center
 static sf::Texture hutaTitleTexture;
 static std::optional<sf::Sprite> hutaTitleSprite;
@@ -37,19 +60,25 @@ static bool hutaTitleLoaded = false;
 static sf::Texture ukFlagTexture;
 static std::optional<sf::Sprite> ukFlagSprite;
 static bool ukFlagLoaded = false;
-static bool britishBonusCollected = false; // Has the bonus been claimed?
+static bool britishBonusCollected = false;
 static std::optional<sf::Text> bonusMessageText;
-static sf::Clock bonusMessageTimer; // Timer to hide the message
+static sf::Clock bonusMessageTimer;
+
+// Music for ironworks theme
+static sf::Music ironworksMusic;
+static bool ironworksMusicLoaded = false;
+static bool ironworksMusicPlaying = false;
 
 // Logic Variables
 static bool isWorking = false;
 static sf::Clock workClock;
 static float currentTotalTime = 0.0f;
 static int currentBatchIron = 0;
+static bool ironworksInitDone = false;
 
 void initIronworks(const sf::Font& font)
 {
-    if (txtSmall.has_value() && hutaTitleLoaded && ukFlagLoaded) return;
+    if (ironworksInitDone) return;
 
     // Load HUTA title image
     if (!hutaTitleLoaded && hutaTitleTexture.loadFromFile("images/ui-huta.png"))
@@ -88,6 +117,35 @@ void initIronworks(const sf::Font& font)
         bonusMessageText->setPosition({180.f, 530.f});
     }
 
+    // Load ironworks theme music (try a few common locations)
+    if (!ironworksMusicLoaded)
+    {
+        try
+        {
+            bool opened = false;
+            // Try local file first (most common)
+            opened = ironworksMusic.openFromFile("ironworks-theme.wav");
+            if (!opened) opened = ironworksMusic.openFromFile("sounds/ironworks-theme.wav");
+            if (!opened) opened = ironworksMusic.openFromFile("audio/ironworks-theme.wav");
+
+            if (opened)
+            {
+                ironworksMusicLoaded = true;
+                ironworksMusic.setLooping(true);
+                // Do not auto-play here; play when entering ironworks location
+                ironworksMusicPlaying = false;
+            }
+            else
+            {
+                std::cerr << "ironworks: failed to open music file from tried paths\n";
+            }
+        }
+        catch (const std::exception&)
+        {
+            ironworksMusicLoaded = false;
+        }
+    }
+
     float startX = 270.f;
     float startY = 180.f; // Przesunięte nieco wyżej
     float gap = 85.f;     // Odstęp między przyciskami
@@ -114,6 +172,64 @@ void initIronworks(const sf::Font& font)
     infoText.emplace(font, "Koszt startu: $10. Wybierz wsad.", 24);
     infoText->setFillColor(sf::Color::Yellow);
     infoText->setPosition({240.f, 460.f});
+
+    // Upgrades button (below MAPA button)
+    upgradesButton.setFillColor(sf::Color(80, 80, 80));
+    upgradesButton.setPosition({690.f, 70.f});
+
+    // Try to load image for upgrades button
+    if (!upgradeBtnTextureLoaded && upgradeBtnTexture.loadFromFile("images/upgrade-btn-icon.png"))
+    {
+        upgradeBtnTextureLoaded = true;
+        upgradeBtnSprite = sf::Sprite(upgradeBtnTexture);
+        sf::Vector2u ts = upgradeBtnTexture.getSize();
+        if (ts.x > 0 && ts.y > 0)
+        {
+            float desiredSize = 72.f;
+            float scale = desiredSize / static_cast<float>(std::max(ts.x, ts.y));
+            upgradeBtnOriginalScale = {scale, scale};
+            upgradeBtnSprite->setScale(upgradeBtnOriginalScale);
+            upgradeBtnSprite->setOrigin({ts.x / 2.f, ts.y / 2.f});
+        }
+        sf::Vector2f rectPos = upgradesButton.getPosition();
+        sf::Vector2f rectSize = upgradesButton.getSize();
+        upgradeBtnSprite->setPosition({rectPos.x + rectSize.x / 2.f, rectPos.y + rectSize.y / 2.f});
+    }
+
+    // Store UI
+    storeBackground.setFillColor(sf::Color(40, 40, 50));
+    storeBackground.setOutlineColor(sf::Color::White);
+    storeBackground.setOutlineThickness(3.f);
+    storeBackground.setPosition({160.f, 70.f});
+
+    storeCloseButton.setFillColor(sf::Color(150, 50, 50));
+    storeCloseButton.setPosition({540.f, 80.f});
+
+    storeCloseButtonText = sf::Text(font, "X", 24);
+    storeCloseButtonText->setFillColor(sf::Color::White);
+    storeCloseButtonText->setOutlineColor(sf::Color::Black);
+    storeCloseButtonText->setOutlineThickness(1.f);
+    storeCloseButtonText->setPosition({565.f, 85.f});
+
+    storeTitleText = sf::Text(font, "STORE", 32);
+    storeTitleText->setFillColor(sf::Color::White);
+    storeTitleText->setOutlineColor(sf::Color::Black);
+    storeTitleText->setOutlineThickness(2.f);
+    storeTitleText->setPosition({280.f, 90.f});
+
+    // Efficient Melting upgrade button (reduces melting time by 50%)
+    efficientMeltingButton.setFillColor(sf::Color(60, 100, 60));
+    efficientMeltingButton.setOutlineColor(sf::Color::White);
+    efficientMeltingButton.setOutlineThickness(2.f);
+    efficientMeltingButton.setPosition({180.f, 235.f});
+
+    efficientMeltingButtonText = sf::Text(font, "Efficient Melting\nCost: 100$", 18);
+    efficientMeltingButtonText->setFillColor(sf::Color::White);
+    efficientMeltingButtonText->setOutlineColor(sf::Color::Black);
+    efficientMeltingButtonText->setOutlineThickness(1.f);
+    efficientMeltingButtonText->setPosition({200.f, 245.f});
+
+    ironworksInitDone = true;
 }
 
 // Requires: money for cost check
@@ -130,6 +246,57 @@ void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& s
     } else if (ukFlagSprite && britishBonusCollected) {
          // Dimmed if already collected
          ukFlagSprite->setColor(sf::Color(100, 100, 100, 100)); 
+    }
+
+    // Store hover handling (stop other updates when open)
+    if (storeOpen)
+    {
+        if (storeCloseButton.getGlobalBounds().contains(mousePos))
+        {
+            storeCloseButton.setFillColor(sf::Color(180, 70, 70));
+        }
+        else
+        {
+            storeCloseButton.setFillColor(sf::Color(150, 50, 50));
+        }
+
+        if (!efficientMeltingPurchased)
+        {
+            if (efficientMeltingButton.getGlobalBounds().contains(mousePos))
+            {
+                efficientMeltingButton.setFillColor(money >= efficientMeltingCost ? sf::Color(80, 130, 80) : sf::Color(100, 60, 60));
+            }
+            else
+            {
+                efficientMeltingButton.setFillColor(money >= efficientMeltingCost ? sf::Color(60, 100, 60) : sf::Color(80, 50, 50));
+            }
+        }
+
+        return;
+    }
+
+    // Hover effect for upgrades button (use sprite if available)
+    if (upgradeBtnSprite.has_value())
+    {
+        if (upgradeBtnSprite->getGlobalBounds().contains(mousePos))
+        {
+            upgradeBtnSprite->setScale({upgradeBtnOriginalScale.x * 1.08f, upgradeBtnOriginalScale.y * 1.08f});
+        }
+        else
+        {
+            upgradeBtnSprite->setScale(upgradeBtnOriginalScale);
+        }
+    }
+    else
+    {
+        if (upgradesButton.getGlobalBounds().contains(mousePos))
+        {
+            upgradesButton.setFillColor(sf::Color(100, 100, 100));
+        }
+        else
+        {
+            upgradesButton.setFillColor(sf::Color(80, 80, 80));
+        }
     }
 
     if (isWorking)
@@ -176,6 +343,20 @@ void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& s
         updateBtn(btnMedium, BATCH_2_IRON);
         updateBtn(btnLarge, BATCH_3_IRON);
 
+        // Update button labels to reflect efficient melting (50% time) if purchased
+        if (txtSmall) {
+            int displayTime = (int)(efficientMeltingPurchased ? (BATCH_1_TIME * 0.5f) : BATCH_1_TIME);
+            txtSmall->setString("Maly (" + std::to_string(BATCH_1_IRON) + " Fe -> " + std::to_string(displayTime) + "s)");
+        }
+        if (txtMedium) {
+            int displayTime = (int)(efficientMeltingPurchased ? (BATCH_2_TIME * 0.5f) : BATCH_2_TIME);
+            txtMedium->setString("Sredni (" + std::to_string(BATCH_2_IRON) + " Fe -> " + std::to_string(displayTime) + "s)");
+        }
+        if (txtLarge) {
+            int displayTime = (int)(efficientMeltingPurchased ? (BATCH_3_TIME * 0.5f) : BATCH_3_TIME);
+            txtLarge->setString("Duzy (" + std::to_string(BATCH_3_IRON) + " Fe -> " + std::to_string(displayTime) + "s)");
+        }
+
         if (infoText) infoText->setString("Wybierz opcje (Koszt startu: $10)");
     }
 }
@@ -191,6 +372,46 @@ bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long lo
         return true; 
     }
 
+    // Store close button
+    if (storeOpen && storeCloseButton.getGlobalBounds().contains(mousePos))
+    {
+        storeOpen = false;
+        return true;
+    }
+
+    // Store purchases (Efficient Melting)
+    if (storeOpen && !efficientMeltingPurchased && efficientMeltingButton.getGlobalBounds().contains(mousePos))
+    {
+        if (money >= efficientMeltingCost)
+        {
+            money -= efficientMeltingCost;
+            efficientMeltingPurchased = true;
+            efficientMeltingButton.setFillColor(sf::Color(40, 40, 40));
+            if (efficientMeltingButtonText.has_value())
+            {
+                efficientMeltingButtonText->setString("Efficient Melting\nPURCHASED");
+            }
+            return true;
+        }
+    }
+
+    // Upgrades button opens store
+    if (!storeOpen)
+    {
+        if (upgradeBtnSprite.has_value() && upgradeBtnSprite->getGlobalBounds().contains(mousePos))
+        {
+            storeOpen = true;
+            return true;
+        }
+        if (upgradesButton.getGlobalBounds().contains(mousePos))
+        {
+            storeOpen = true;
+            return true;
+        }
+    }
+
+    if (storeOpen) return false;
+
     if (isWorking) return false;
 
     // Helper to process click for a specific button
@@ -203,7 +424,7 @@ bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long lo
                 
                 // Start Timer: 30s/25s/15s
                 currentBatchIron = ironReq;
-                currentTotalTime = timeReq;
+                currentTotalTime = efficientMeltingPurchased ? timeReq * 0.5f : timeReq;
                 isWorking = true;
                 workClock.restart();
                 return true;
@@ -219,7 +440,7 @@ bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long lo
     return false;
 }
 
-void drawIronworks(sf::RenderWindow& window)
+void drawIronworks(sf::RenderWindow& window, int money)
 {
     if (hutaTitleSprite) window.draw(*hutaTitleSprite);
     
@@ -231,9 +452,72 @@ void drawIronworks(sf::RenderWindow& window)
         if (bonusMessageText) window.draw(*bonusMessageText);
     }
 
-    window.draw(btnSmall); if (txtSmall) window.draw(*txtSmall);
-    window.draw(btnMedium); if (txtMedium) window.draw(*txtMedium);
-    window.draw(btnLarge); if (txtLarge) window.draw(*txtLarge);
-    
-    if (infoText) window.draw(*infoText);
+    // Always draw upgrades button
+    if (upgradeBtnSprite.has_value())
+    {
+        window.draw(*upgradeBtnSprite);
+    }
+    else
+    {
+        window.draw(upgradesButton);
+    }
+    if (upgradesButtonText.has_value())
+        window.draw(*upgradesButtonText);
+
+    // Draw store if open
+    if (storeOpen)
+    {
+        window.draw(storeBackground);
+        if (storeTitleText.has_value())
+            window.draw(*storeTitleText);
+        window.draw(storeCloseButton);
+        if (storeCloseButtonText.has_value())
+            window.draw(*storeCloseButtonText);
+
+        if (!efficientMeltingPurchased)
+        {
+            window.draw(efficientMeltingButton);
+            if (efficientMeltingButtonText.has_value())
+            {
+                efficientMeltingButtonText->setFillColor(money >= efficientMeltingCost ? sf::Color::White : sf::Color(200, 150, 150));
+                window.draw(*efficientMeltingButtonText);
+            }
+        }
+        else
+        {
+            window.draw(efficientMeltingButton);
+            if (efficientMeltingButtonText.has_value())
+            {
+                efficientMeltingButtonText->setFillColor(sf::Color(150, 150, 150));
+                window.draw(*efficientMeltingButtonText);
+            }
+        }
+    }
+    else
+    {
+        window.draw(btnSmall); if (txtSmall) window.draw(*txtSmall);
+        window.draw(btnMedium); if (txtMedium) window.draw(*txtMedium);
+        window.draw(btnLarge); if (txtLarge) window.draw(*txtLarge);
+        
+        if (infoText) window.draw(*infoText);
+    }
+}
+
+// Music control for ironworks theme
+void playIronworksMusic()
+{
+    if (ironworksMusicLoaded && !ironworksMusicPlaying)
+    {
+        ironworksMusic.play();
+        ironworksMusicPlaying = true;
+    }
+}
+
+void stopIronworksMusic()
+{
+    if (ironworksMusicLoaded && ironworksMusicPlaying)
+    {
+        ironworksMusic.stop();
+        ironworksMusicPlaying = false;
+    }
 }

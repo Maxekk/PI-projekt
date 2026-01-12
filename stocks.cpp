@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -29,6 +30,11 @@ static std::optional<sf::Text> marketInfoText;
 static sf::Texture gieldaTitleTexture;
 static std::optional<sf::Sprite> gieldaTitleSprite;
 static bool gieldaTitleLoaded = false;
+
+// Music for stocks theme (reuse ironworks file for now)
+static sf::Music stocksMusic;
+static bool stocksMusicLoaded = false;
+static bool stocksMusicPlaying = false;
 
 void initStocks(const sf::Font& font)
 {
@@ -72,6 +78,34 @@ void initStocks(const sf::Font& font)
     marketInfoText.emplace(font, "Wybierz oferte sprzedazy.", 24);
     marketInfoText->setFillColor(sf::Color::Green);
     marketInfoText->setPosition({260.f, 460.f});
+
+    // Load market/stocks theme (reuse ironworks-theme.wav)
+    if (!stocksMusicLoaded)
+    {
+            try
+            {
+                bool opened = stocksMusic.openFromFile("stock-theme.wav");
+                if (!opened) opened = stocksMusic.openFromFile("sounds/stock-theme.wav");
+                if (!opened) opened = stocksMusic.openFromFile("audio/stock-theme.wav");
+
+                if (opened)
+                {
+                    stocksMusicLoaded = true;
+                    stocksMusic.setLooping(true);
+                    stocksMusicPlaying = false;
+                }
+                else
+                {
+                    std::cerr << "stocks: failed to open music file from tried paths\n";
+                }
+            }
+            catch (const std::exception&)
+            {
+                stocksMusicLoaded = false;
+            }
+
+        
+    }
 }
 
 // Logic: Check if player has enough steel to sell
@@ -134,4 +168,23 @@ void drawStocks(sf::RenderWindow& window)
     window.draw(btnSell3); if (txtSell3) window.draw(*txtSell3);
     
     if (marketInfoText) window.draw(*marketInfoText);
+}
+
+// Music control for stocks theme
+void playStocksMusic()
+{
+    if (stocksMusicLoaded && !stocksMusicPlaying)
+    {
+        stocksMusic.play();
+        stocksMusicPlaying = true;
+    }
+}
+
+void stopStocksMusic()
+{
+    if (stocksMusicLoaded && stocksMusicPlaying)
+    {
+        stocksMusic.stop();
+        stocksMusicPlaying = false;
+    }
 }

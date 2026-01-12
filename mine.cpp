@@ -243,12 +243,20 @@ void initMine(const sf::Font& font)
     // Load mine theme music (try a few common locations)
     if (!mineMusicLoaded)
     {
-        if (mineMusic.openFromFile("sounds/mine-theme.wav") || mineMusic.openFromFile("audio/mine-theme.wav") || mineMusic.openFromFile("mine-theme.wav"))
+        try
         {
-            mineMusicLoaded = true;
-            mineMusic.setLooping(true);
-            // Do not auto-play here; play when entering mine location
-            mineMusicPlaying = false;
+            if (mineMusic.openFromFile("sounds/mine-theme.wav") || mineMusic.openFromFile("audio/mine-theme.wav") || mineMusic.openFromFile("mine-theme.wav"))
+            {
+                mineMusicLoaded = true;
+                mineMusic.setLooping(true);
+                // Do not auto-play here; play when entering mine location
+                mineMusicPlaying = false;
+            }
+        }
+        catch (const std::exception&)
+        {
+            // Ignore audio initialization failures
+            mineMusicLoaded = false;
         }
     }
     
@@ -256,17 +264,17 @@ void initMine(const sf::Font& font)
     if (minerTextureLoaded && !minerSprite.has_value())
     {
         minerSprite = sf::Sprite(minerTexture);
-        // Scale to much bigger size (200x150 - significantly larger)
+        // Scale to target display size (100x120)
         sf::Vector2u textureSize = minerTexture.getSize();
         if (textureSize.x > 0 && textureSize.y > 0)
         {
-            float scaleX = 200.f / static_cast<float>(textureSize.x);
-            float scaleY = 150.f / static_cast<float>(textureSize.y);
+            float scaleX = 100.f / static_cast<float>(textureSize.x);
+            float scaleY = 120.f / static_cast<float>(textureSize.y);
             // Set origin to center for proper flipping
             minerSprite->setOrigin({textureSize.x / 2.f, textureSize.y / 2.f});
             minerSprite->setScale({scaleX, scaleY});
         }
-        minerSprite->setPosition({360.f + 100.f, binY -50.f}); // Start in center (adjusted for origin: 200/2=100, 150/2=75)
+        minerSprite->setPosition({360.f + 50.f, binY -60.f}); // Start in center (adjusted for origin: 100/2=50, 120/2=60)
         animationTimer.restart();
     }
 
@@ -489,22 +497,22 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
     }
 
     // Update bin movement (A and D keys)
-    float binX = 460.f; // Default center position (adjusted for origin: 360 + 100)
+    float binX = 410.f; // Default center position (adjusted for origin: 360 + 50)
     if (minerSprite.has_value())
     {
         binX = minerSprite->getPosition().x;
     }
     
-    if (keyA && binX > 100.f) // 100 = half of miner width (200/2)
+    if (keyA && binX > 50.f) // 50 = half of miner width (100/2)
     {
         binX -= binSpeed * deltaTime;
-        if (binX < 100.f) binX = 100.f;
+        if (binX < 50.f) binX = 50.f;
         movingLeft = true;
     }
-    else if (keyD && binX < 700.f) // 800 - 100 (half miner width)
+    else if (keyD && binX < 750.f) // 800 - 50 (half miner width)
     {
         binX += binSpeed * deltaTime;
-        if (binX > 700.f) binX = 700.f;
+        if (binX > 750.f) binX = 750.f;
         movingLeft = false;
     }
     
@@ -540,8 +548,8 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
                 sf::Vector2u textureSize = currentTexture.getSize();
                 if (textureSize.x > 0 && textureSize.y > 0)
                 {
-                    float scaleX = 200.f / static_cast<float>(textureSize.x);
-                    float scaleY = 150.f / static_cast<float>(textureSize.y);
+                    float scaleX = 100.f / static_cast<float>(textureSize.x);
+                    float scaleY = 120.f / static_cast<float>(textureSize.y);
                     minerSprite->setOrigin({textureSize.x / 2.f, textureSize.y / 2.f});
                     // Preserve flip direction
                     if (isFlipped)
@@ -571,8 +579,8 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
                 sf::Vector2u textureSize = minerTexture.getSize();
                 if (textureSize.x > 0 && textureSize.y > 0)
                 {
-                    float scaleX = 200.f / static_cast<float>(textureSize.x);
-                    float scaleY = 150.f / static_cast<float>(textureSize.y);
+                    float scaleX = 100.f / static_cast<float>(textureSize.x);
+                    float scaleY = 120.f / static_cast<float>(textureSize.y);
                     minerSprite->setOrigin({textureSize.x / 2.f, textureSize.y / 2.f});
                     // Preserve flip direction
                     if (isFlipped)
@@ -592,15 +600,15 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
     // Update miner sprite position and flip based on direction
     if (minerSprite.has_value())
     {
-        minerSprite->setPosition({binX, binY + 10.f}); // Adjusted for origin (150/2=75)
+        minerSprite->setPosition({binX, binY + 10.f}); // Adjusted for origin (120/2=60)
         // Flip horizontally when moving left
         // Use current texture to get size
         const sf::Texture& currentTexture = minerSprite->getTexture();
         sf::Vector2u textureSize = currentTexture.getSize();
         if (textureSize.x > 0 && textureSize.y > 0)
         {
-            float scaleX = 200.f / static_cast<float>(textureSize.x);
-            float scaleY = 150.f / static_cast<float>(textureSize.y);
+            float scaleX = 100.f / static_cast<float>(textureSize.x);
+            float scaleY = 120.f / static_cast<float>(textureSize.y);
             if (movingLeft)
             {
                 // Flip by making scale X negative
@@ -689,7 +697,7 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
 
     // Update falling items
     sf::Vector2f binPos = {360.f, binY};
-    sf::Vector2f binSize = {200.f, 150.f}; // Updated size for bigger miner
+    sf::Vector2f binSize = {100.f, 120.f}; // Updated size for miner
     if (minerSprite.has_value())
     {
         binPos = minerSprite->getPosition();
@@ -699,11 +707,11 @@ void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool k
         sf::Vector2u textureSize = currentTexture.getSize();
         if (textureSize.x > 0 && textureSize.y > 0)
         {
-            float scaleX = 200.f / static_cast<float>(textureSize.x);
-            float scaleY = 150.f / static_cast<float>(textureSize.y);
+            float scaleX = 100.f / static_cast<float>(textureSize.x);
+            float scaleY = 120.f / static_cast<float>(textureSize.y);
             binPos.x -= (textureSize.x * scaleX) / 2.f;
             binPos.y -= (textureSize.y * scaleY) / 2.f;
-            binSize = {200.f, 150.f}; // Updated size
+            binSize = {100.f, 120.f}; // Updated size
         }
     }
     
