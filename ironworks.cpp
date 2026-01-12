@@ -17,8 +17,8 @@ static const float BATCH_2_TIME = 25.0f;
 static const int BATCH_3_IRON = 120;
 static const float BATCH_3_TIME = 15.0f;
 
-// work cost -> 10
-static const int OP_COST = 10;
+// work cost removed (no longer charged)
+static const int OP_COST = 0;
 
 // UI Elements
 static sf::RectangleShape btnSmall({260.f, 60.f});
@@ -169,7 +169,7 @@ void initIronworks(const sf::Font& font)
     txtLarge->setPosition({startX + 20.f, startY + gap * 2 + 18.f});
 
     // Info text at bottom
-    infoText.emplace(font, "Koszt startu: $10. Wybierz wsad.", 24);
+    infoText.emplace(font, "Wybierz opcje.", 24);
     infoText->setFillColor(sf::Color::Yellow);
     infoText->setPosition({240.f, 460.f});
 
@@ -328,8 +328,8 @@ void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& s
     {
         // check affordability 
         auto updateBtn = [&](sf::RectangleShape& btn, int costIron) {
-            bool canAfford = (money >= OP_COST && iron >= costIron);
-            
+            bool canAfford = (iron >= costIron);
+
             if (btn.getGlobalBounds().contains(mousePos)) {
                 // Hover effect
                 btn.setFillColor(canAfford ? sf::Color(200, 80, 80) : sf::Color(80, 40, 40));
@@ -417,11 +417,10 @@ bool handleIronworksClick(const sf::Vector2f& mousePos, long long& iron, long lo
     // Helper to process click for a specific button
     auto tryClick = [&](sf::RectangleShape& btn, int ironReq, float timeReq) {
         if (btn.getGlobalBounds().contains(mousePos)) {
-            if (money >= OP_COST && iron >= ironReq) {
-                // Deduct: $10 + Iron Batch
-                money -= OP_COST;
+            if (iron >= ironReq) {
+                // Deduct iron batch (no money fee)
                 iron -= ironReq;
-                
+
                 // Start Timer: 30s/25s/15s
                 currentBatchIron = ironReq;
                 currentTotalTime = efficientMeltingPurchased ? timeReq * 0.5f : timeReq;

@@ -359,6 +359,58 @@ int main()
     quitButton.setPosition({300.f, 300.f});
     quitButton.setFillColor(sf::Color(100, 100, 100));
 
+    // Button images (optional replacements)
+    sf::Texture playBtnTexture;
+    std::optional<sf::Sprite> playBtnSprite;
+    sf::Vector2f playBtnBaseScale = {1.f, 1.f};
+    sf::Texture quitBtnTexture;
+    std::optional<sf::Sprite> quitBtnSprite;
+    sf::Vector2f quitBtnBaseScale = {1.f, 1.f};
+    sf::Texture statsBtnTexture;
+    std::optional<sf::Sprite> statsBtnSprite;
+    sf::Vector2f statsBtnBaseScale = {1.f, 1.f};
+    // Try to load image buttons and position/scale them to the rectangle sizes
+    if (playBtnTexture.loadFromFile("images/play-btn.png"))
+    {
+        playBtnSprite = sf::Sprite(playBtnTexture);
+        sf::Vector2u ts = playBtnTexture.getSize();
+        if (ts.x > 0 && ts.y > 0)
+        {
+            float scaleX = 200.f / static_cast<float>(ts.x);
+            float scaleY = 60.f / static_cast<float>(ts.y);
+            playBtnSprite->setScale({scaleX, scaleY});
+            playBtnBaseScale = playBtnSprite->getScale();
+        }
+        playBtnSprite->setPosition(playButton.getPosition());
+    }
+    if (quitBtnTexture.loadFromFile("images/quit-btn.png"))
+    {
+        quitBtnSprite = sf::Sprite(quitBtnTexture);
+        sf::Vector2u ts = quitBtnTexture.getSize();
+        if (ts.x > 0 && ts.y > 0)
+        {
+            float scaleX = 200.f / static_cast<float>(ts.x);
+            float scaleY = 60.f / static_cast<float>(ts.y);
+            quitBtnSprite->setScale({scaleX, scaleY});
+            quitBtnBaseScale = quitBtnSprite->getScale();
+        }
+        quitBtnSprite->setPosition(quitButton.getPosition());
+    }
+    // Optional stats button (placed below quit)
+    if (statsBtnTexture.loadFromFile("images/stats-btn.png"))
+    {
+        statsBtnSprite = sf::Sprite(statsBtnTexture);
+        sf::Vector2u ts = statsBtnTexture.getSize();
+        if (ts.x > 0 && ts.y > 0)
+        {
+            float scaleX = 200.f / static_cast<float>(ts.x);
+            float scaleY = 60.f / static_cast<float>(ts.y);
+            statsBtnSprite->setScale({scaleX, scaleY});
+            statsBtnBaseScale = statsBtnSprite->getScale();
+        }
+        statsBtnSprite->setPosition({300.f, 380.f});
+    }
+
     sf::Text titleText(font);
     titleText.setString("KLIKER - HUTA");
     titleText.setCharacterSize(48);
@@ -388,6 +440,42 @@ int main()
         quitText.setPosition(sf::Vector2f{quitButton.getPosition().x + quitButton.getSize().x / 2.f - b.size.x / 2.f,
                      quitButton.getPosition().y + quitButton.getSize().y / 2.f - b.size.y / 2.f});
     }
+
+    // --- STATS / SESSION TRACKING ---
+    sf::Clock sessionClock; // track total play time
+    long long totalCollectedIron = 0;
+    long long totalMeltedIron = 0;
+    long long totalEarnedMoney = 0;
+    long long totalSpentMoney = 0;
+    int maxLevel = level;
+    long long prevCollectedIron = collectedIron;
+    long long prevSteel = steel;
+    int prevMoney = money;
+
+    bool statsOpen = false;
+    bool pausedMenu = false; // true when menu opened via Escape (shows Resume instead of Play)
+    Location menuReturnLocation = Location::Mine;
+    sf::RectangleShape statsPanel({560.f, 360.f});
+    statsPanel.setPosition({120.f, 100.f});
+    statsPanel.setFillColor(sf::Color(20, 20, 30));
+    statsPanel.setOutlineColor(sf::Color::White);
+    statsPanel.setOutlineThickness(2.f);
+
+    sf::Text statsTitle(font, "Session Stats", 32);
+    statsTitle.setFillColor(sf::Color::White);
+    statsTitle.setPosition({140.f, 110.f});
+
+    sf::Text statsLines[6] = { sf::Text(font), sf::Text(font), sf::Text(font), sf::Text(font), sf::Text(font), sf::Text(font) };
+    for (int i=0;i<6;i++) { statsLines[i].setFillColor(sf::Color::White); statsLines[i].setCharacterSize(20); }
+
+    sf::RectangleShape backButton({200.f, 50.f});
+    backButton.setPosition({300.f, 420.f});
+    backButton.setFillColor(sf::Color(100,100,100));
+    sf::Text backText(font, "Back", 24);
+    backText.setFillColor(sf::Color::White);
+    sf::FloatRect bt = backText.getLocalBounds();
+    backText.setPosition(sf::Vector2f{backButton.getPosition().x + backButton.getSize().x/2.f - bt.size.x/2.f,
+                         backButton.getPosition().y + backButton.getSize().y/2.f - bt.size.y/2.f});
 
     // Initialize location modules
     initMine(font);
@@ -443,18 +531,49 @@ int main()
             }
         }
 
-        // Start menu hover colors
+        // Start menu hover: prefer image buttons, fallback to rectangle coloring
         if (currentLocation == Location::StartMenu)
         {
-            if (playButton.getGlobalBounds().contains(mousePos))
-                playButton.setFillColor(sf::Color(150,150,150));
+            // Play button hover
+            if (playBtnSprite.has_value())
+            {
+                if (playBtnSprite->getGlobalBounds().contains(mousePos))
+                    playBtnSprite->setScale({playBtnBaseScale.x * 1.05f, playBtnBaseScale.y * 1.05f});
+                else
+                    playBtnSprite->setScale(playBtnBaseScale);
+            }
             else
-                playButton.setFillColor(sf::Color(100,100,100));
+            {
+                if (playButton.getGlobalBounds().contains(mousePos))
+                    playButton.setFillColor(sf::Color(150,150,150));
+                else
+                    playButton.setFillColor(sf::Color(100,100,100));
+            }
 
-            if (quitButton.getGlobalBounds().contains(mousePos))
-                quitButton.setFillColor(sf::Color(150,150,150));
+            // Quit button hover
+            if (quitBtnSprite.has_value())
+            {
+                if (quitBtnSprite->getGlobalBounds().contains(mousePos))
+                    quitBtnSprite->setScale({quitBtnBaseScale.x * 1.05f, quitBtnBaseScale.y * 1.05f});
+                else
+                    quitBtnSprite->setScale(quitBtnBaseScale);
+            }
             else
-                quitButton.setFillColor(sf::Color(100,100,100));
+            {
+                if (quitButton.getGlobalBounds().contains(mousePos))
+                    quitButton.setFillColor(sf::Color(150,150,150));
+                else
+                    quitButton.setFillColor(sf::Color(100,100,100));
+            }
+
+            // Stats button hover
+            if (statsBtnSprite.has_value())
+            {
+                if (statsBtnSprite->getGlobalBounds().contains(mousePos))
+                    statsBtnSprite->setScale({statsBtnBaseScale.x * 1.05f, statsBtnBaseScale.y * 1.05f});
+                else
+                    statsBtnSprite->setScale(statsBtnBaseScale);
+            }
         }
 
         // Update menu background panning when on Start Menu
@@ -511,25 +630,109 @@ int main()
         }
 
         Location prevLocation = currentLocation;
-        while (const std::optional event = window.pollEvent())
+        while (auto event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
+
+            if (event->is<sf::Event::KeyPressed>())
+            {
+                if (sf::Keyboard::isKeyPressed(sf::Keyboard::Key::Escape))
+                {
+                    // Toggle pause menu: open as StartMenu with resume; store return location
+                    if (currentLocation != Location::StartMenu)
+                    {
+                        menuReturnLocation = currentLocation;
+                        currentLocation = Location::StartMenu;
+                        pausedMenu = true;
+                        statsOpen = false;
+                    }
+                    else
+                    {
+                        // If already on StartMenu and it was the paused menu, resume
+                        if (pausedMenu)
+                        {
+                            currentLocation = menuReturnLocation;
+                            pausedMenu = false;
+                            statsOpen = false;
+                        }
+                    }
+                }
+            }
 
             if (event->is<sf::Event::MouseButtonPressed>())
             {
                 // If on Start Menu, handle Play/Quit and skip other clicks
                 if (currentLocation == Location::StartMenu)
                 {
-                    if (playButton.getGlobalBounds().contains(mousePos))
+                    // If stats overlay is open, check back button
+                    if (statsOpen)
                     {
-                        currentLocation = Location::Mine;
+                        if (backButton.getGlobalBounds().contains(mousePos))
+                        {
+                            statsOpen = false;
+                            continue;
+                        }
+                        // Ignore other clicks while stats open
+                        continue;
                     }
-                    else if (quitButton.getGlobalBounds().contains(mousePos))
+
+                    bool handled = false;
+                    if (playBtnSprite.has_value())
                     {
-                        window.close();
+                        if (playBtnSprite->getGlobalBounds().contains(mousePos))
+                        {
+                            if (pausedMenu)
+                            {
+                                currentLocation = menuReturnLocation;
+                                pausedMenu = false;
+                            }
+                            else
+                            {
+                                currentLocation = Location::Mine;
+                            }
+                            handled = true;
+                        }
                     }
-                    continue;
+                    else if (playButton.getGlobalBounds().contains(mousePos))
+                    {
+                        if (pausedMenu)
+                        {
+                            currentLocation = menuReturnLocation;
+                            pausedMenu = false;
+                        }
+                        else
+                        {
+                            currentLocation = Location::Mine;
+                        }
+                        handled = true;
+                    }
+
+                    if (!handled)
+                    {
+                        if (quitBtnSprite.has_value())
+                        {
+                            if (quitBtnSprite->getGlobalBounds().contains(mousePos))
+                            {
+                                window.close();
+                                handled = true;
+                            }
+                        }
+                        else if (quitButton.getGlobalBounds().contains(mousePos))
+                        {
+                            window.close();
+                            handled = true;
+                        }
+                    }
+
+                    // stats button opens stats overlay
+                    if (!handled && statsBtnSprite.has_value() && statsBtnSprite->getGlobalBounds().contains(mousePos))
+                    {
+                        statsOpen = true;
+                        handled = true;
+                    }
+
+                    if (handled) continue;
                 }
 
                 // Click MAPA button (only when not on map or menu)
@@ -605,6 +808,26 @@ int main()
         statsSteelText.setString(": " + std::to_string(steel) + " kg");
         statsMoneyText.setString(": " + std::to_string(money));
 
+        // --- UPDATE SESSION STATS (detect deltas since last frame) ---
+        if (collectedIron > prevCollectedIron)
+        {
+            totalCollectedIron += (collectedIron - prevCollectedIron);
+        }
+        if (steel > prevSteel)
+        {
+            long long steelGained = steel - prevSteel;
+            // approximate iron melted (inverse of steel = iron/10)
+            totalMeltedIron += steelGained * 10;
+        }
+        int deltaMoney = money - prevMoney;
+        if (deltaMoney > 0) totalEarnedMoney += deltaMoney;
+        else if (deltaMoney < 0) totalSpentMoney += -deltaMoney;
+        if (level > maxLevel) maxLevel = level;
+        // update prev snapshots
+        prevCollectedIron = collectedIron;
+        prevSteel = steel;
+        prevMoney = money;
+
         switch (currentLocation)
         {
             case Location::StartMenu:
@@ -638,10 +861,48 @@ int main()
                 window.draw(*furnaceBgSprite);
             }
             window.draw(titleText);
-            window.draw(playButton);
-            window.draw(playText);
-            window.draw(quitButton);
-            window.draw(quitText);
+            // If stats overlay is open render it instead of the menu buttons
+            if (statsOpen)
+            {
+                window.draw(statsPanel);
+                window.draw(statsTitle);
+
+                float sx = statsPanel.getPosition().x + 20.f;
+                float sy = statsPanel.getPosition().y + 60.f;
+                float lineH = 36.f;
+                // Time played in minutes
+                float minutes = sessionClock.getElapsedTime().asSeconds() / 60.f;
+                statsLines[0].setString("Time played: " + std::to_string((int)minutes) + " min");
+                statsLines[1].setString("Achieved level: " + std::to_string(maxLevel));
+                statsLines[2].setString("Total collected iron: " + std::to_string(totalCollectedIron) + " kg");
+                statsLines[3].setString("Total melted iron: " + std::to_string(totalMeltedIron) + " kg");
+                statsLines[4].setString("Total earned money: $" + std::to_string(totalEarnedMoney));
+                statsLines[5].setString("Total spent money: $" + std::to_string(totalSpentMoney));
+
+                for (int i=0;i<6;i++) { statsLines[i].setPosition({sx, sy + i * lineH}); window.draw(statsLines[i]); }
+                window.draw(backButton);
+                window.draw(backText);
+            }
+            else
+            {
+                // Draw image buttons if available, otherwise draw rectangles+text
+                if (pausedMenu)
+                {
+                    // Draw Resume (reuse play button texture) + stats + quit
+                    if (playBtnSprite.has_value()) window.draw(*playBtnSprite);
+                    else { window.draw(playButton); /* no playText for resume */ }
+                }
+                else
+                {
+                    if (playBtnSprite.has_value()) window.draw(*playBtnSprite);
+                    else { window.draw(playButton); window.draw(playText); }
+                }
+
+                if (quitBtnSprite.has_value()) window.draw(*quitBtnSprite);
+                else { window.draw(quitButton); window.draw(quitText); }
+
+                if (statsBtnSprite.has_value()) window.draw(*statsBtnSprite);
+            }
             window.display();
             continue;
         }
