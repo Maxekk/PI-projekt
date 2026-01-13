@@ -34,12 +34,16 @@ Projekt został zrealizowany przy użyciu:
 
 ## 🚀 Instalacja i kompilacja
 
-Aby uruchomić projekt, potrzebujesz kompilatora C++ oraz narzędzia Make.
+Aby uruchomić projekt, potrzebujesz kompilatora C++ w wersji 17 lub wyżej oraz narzędzia Make.
+Dodatkowo wymagana jest biblioteka graficzna SFML w wersji 3.0.2
+```
+https://www.sfml-dev.org/download/sfml/3.0.2/
+```
 
 ### 1. Klonowanie repozytorium
 
 ```bash
-git clone https://github.com/twoj-nick/nazwa-gry.git
+git clone https://github.com/Maxekk/PI-projekt
 cd nazwa-gry
 ```
 
