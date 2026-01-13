@@ -65,7 +65,7 @@ Następnie uruchom plik wykonywalny:
 
 | Klawisz | Akcja |
 | :---: | :--- |
-| **A / D** (lub Strzałki) | Poruszanie się (Lewo / Prawo) |
+| **A / D** | Poruszanie się (Lewo / Prawo) |
 | **Esc** | Wyjście / Pauza |
 
 
