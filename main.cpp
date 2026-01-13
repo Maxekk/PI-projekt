@@ -874,7 +874,7 @@ int main()
                 if (pausedMenu)
                 {
                     if (playBtnSprite.has_value()) window.draw(*playBtnSprite);
-                    else { window.draw(playButton) }
+                    else { window.draw(playButton); }
                 }
                 else
                 {
