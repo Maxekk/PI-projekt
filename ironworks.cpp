@@ -168,10 +168,7 @@ void initIronworks(const sf::Font& font)
     txtLarge.emplace(font, "Duzy (120 Fe -> 15s)", 20);
     txtLarge->setPosition({startX + 20.f, startY + gap * 2 + 18.f});
 
-    // Info text at bottom
-    infoText.emplace(font, "Wybierz opcje.", 24);
-    infoText->setFillColor(sf::Color::Yellow);
-    infoText->setPosition({240.f, 460.f});
+ 
 
     // Upgrades button (below MAPA button)
     upgradesButton.setFillColor(sf::Color(80, 80, 80));
@@ -357,7 +354,6 @@ void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& s
             txtLarge->setString("Duzy (" + std::to_string(BATCH_3_IRON) + " Fe -> " + std::to_string(displayTime) + "s)");
         }
 
-        if (infoText) infoText->setString("Wybierz opcje (Koszt startu: $10)");
     }
 }
 
