@@ -3,6 +3,10 @@
 #include <optional>
 #include <string>
 
+#include <vector>
+#include <ctime>
+
+
 void initMine(const sf::Font& font);
 void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool keyA, bool keyD, long long& collectedIron, int& xp);
 bool handleMineClick(const sf::Vector2f& mousePos, long long& collectedIron, int& money, int& xp);
@@ -34,6 +38,8 @@ enum class Location {
 
 int main()
 {
+    srand(static_cast<unsigned int>(time(NULL)));
+    
     sf::RenderWindow window(sf::VideoMode({800, 600}), "Kliker - Huta");
     window.setFramerateLimit(60);
 
