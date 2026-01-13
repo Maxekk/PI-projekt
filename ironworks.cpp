@@ -511,7 +511,13 @@ void playIronworksMusic()
         ironworksMusicPlaying = true;
     }
 }
-
+void setIronworksVolume(float volume)
+{
+    if (ironworksMusicLoaded)
+    {
+        ironworksMusic.setVolume(volume);
+    }
+}
 void stopIronworksMusic()
 {
     if (ironworksMusicLoaded && ironworksMusicPlaying)

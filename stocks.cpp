@@ -211,3 +211,4 @@ void drawStocks(sf::RenderWindow& window)
 
 void playStocksMusic() { if (stocksMusicLoaded && !stocksMusicPlaying) { stocksMusic.play(); stocksMusicPlaying = true; } }
 void stopStocksMusic() { if (stocksMusicLoaded && stocksMusicPlaying) { stocksMusic.stop(); stocksMusicPlaying = false; } }
+void setStocksVolume(float volume) { if (stocksMusicLoaded) { stocksMusic.setVolume(volume); } }

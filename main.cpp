@@ -6,6 +6,8 @@
 #include <vector>
 #include <ctime>
 
+// Global volume control
+float g_globalVolume = 50.f; // 0-100
 
 void initMine(const sf::Font& font);
 void updateMine(const sf::Vector2f& mousePos, int money, float deltaTime, bool keyA, bool keyD, long long& collectedIron, int& xp);
@@ -17,6 +19,9 @@ void playIronworksMusic();
 void stopIronworksMusic();
 void playStocksMusic();
 void stopStocksMusic();
+void setMusicVolume(float volume);
+void setIronworksVolume(float volume);
+void setStocksVolume(float volume);
 
 void initIronworks(const sf::Font& font);
 void updateIronworks(const sf::Vector2f& mousePos, long long& iron, long long& steel, int& money);
@@ -293,14 +298,14 @@ int main()
     statsSteelText.setFillColor(sf::Color::White);
     statsMoneyText.setFillColor(sf::Color::White);
     // Base position and vertical spacing
-    const sf::Vector2f statsBasePos = {10.f, 6.f};
+    const sf::Vector2f statsBasePos = {10.f, 2.5f};
     const float statsVSpacing = 25.5f;
     const float statsIconX = statsBasePos.x;
     statsLevelText.setPosition(statsBasePos);
     // Text positions adjusted to be after icons
-    statsIronText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing});
-    statsSteelText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing * 2.f});
-    statsMoneyText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing * 3.f + 4.f});
+    statsIronText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing * 0.9f});
+    statsSteelText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing * 2.1f});
+    statsMoneyText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing * 3.2f + 4.f});
 
     // --- UI: MAP BUTTON (TOP RIGHT)
     sf::Texture mapButtonTexture;
@@ -492,6 +497,36 @@ int main()
     sf::FloatRect bt = backText.getLocalBounds();
     backText.setPosition(sf::Vector2f{backButton.getPosition().x + backButton.getSize().x/2.f - bt.size.x/2.f,
                          backButton.getPosition().y + backButton.getSize().y/2.f - bt.size.y/2.f});
+
+    // --- VOLUME SLIDER (TOP LEFT CORNER) ---
+    const float volumeSliderX = 10.f;
+    const float volumeSliderY = 60.f;
+    const float volumeSliderWidth = 180.f;
+    const float volumeSliderHeight = 15.f;
+    bool volumeSliderDragging = false;
+    
+    sf::RectangleShape volumeSliderBackground({volumeSliderWidth, volumeSliderHeight});
+    volumeSliderBackground.setPosition({volumeSliderX, volumeSliderY -40.f});
+    volumeSliderBackground.setFillColor(sf::Color(105, 85, 74));
+    volumeSliderBackground.setOutlineColor(sf::Color(247, 119, 22));
+    volumeSliderBackground.setOutlineThickness(1.f);
+    
+    sf::RectangleShape volumeSliderHandle({12.f, 20.f});
+    volumeSliderHandle.setFillColor(sf::Color(125, 111, 104));
+    volumeSliderHandle.setOutlineColor(sf::Color(247, 119, 22));
+    volumeSliderHandle.setPosition({volumeSliderX, volumeSliderY -40.f});
+    volumeSliderHandle.setOutlineThickness(1.f);
+    
+    sf::Text volumeLabel(font);
+    volumeLabel.setString("Volume");
+    volumeLabel.setCharacterSize(14);
+    volumeLabel.setFillColor(sf::Color::White);
+    volumeLabel.setPosition({volumeSliderX, volumeSliderY - 60.f});
+    
+    sf::Text volumeValueText(font);
+    volumeValueText.setCharacterSize(12);
+    volumeValueText.setFillColor(sf::Color::White);
+    volumeValueText.setPosition({volumeSliderX + volumeSliderWidth + 0.f, volumeSliderY - 40.f});
 
     // Initialize location modules
     initMine(font);
@@ -780,8 +815,47 @@ int main()
                 {
                     handleStocksClick(mousePos, steel, money);
                 }
+                
+                // Volume slider click handling
+                if (volumeSliderBackground.getGlobalBounds().contains(mousePos))
+                {
+                    volumeSliderDragging = true;
+                }
+            }
+            
+            if (event->is<sf::Event::MouseButtonReleased>())
+            {
+                volumeSliderDragging = false;
             }
         }
+        
+        // Update volume slider position based on mouse
+        if (volumeSliderDragging)
+        {
+            float sliderMinX = volumeSliderX;
+            float sliderMaxX = volumeSliderX + volumeSliderWidth;
+            float handleX = std::clamp(mousePos.x - volumeSliderHandle.getSize().x / 2.f, sliderMinX, sliderMaxX - volumeSliderHandle.getSize().x);
+            volumeSliderHandle.setPosition({handleX, volumeSliderY - 42.f});
+            
+            // Calculate volume percentage
+            float relativePos = (handleX - sliderMinX) / (sliderMaxX - sliderMinX - volumeSliderHandle.getSize().x);
+            g_globalVolume = std::clamp(relativePos * 100.f, 0.f, 100.f);
+            
+            // Update music volumes in real-time
+            setMusicVolume(g_globalVolume);
+            setIronworksVolume(g_globalVolume);
+            setStocksVolume(g_globalVolume);
+        }
+        else
+        {
+            // Update handle position to match current volume (for initialization or external changes)
+            float relativePos = g_globalVolume / 100.f;
+            float handleX = volumeSliderX + relativePos * (volumeSliderWidth - volumeSliderHandle.getSize().x);
+            volumeSliderHandle.setPosition({handleX, volumeSliderY - 42.f});
+        }
+        
+        // Update volume value display
+        volumeValueText.setString(std::to_string(static_cast<int>(g_globalVolume)) + "%");
 
         // If location changed, start/stop location music accordingly
         if (prevLocation != currentLocation)
@@ -853,6 +927,13 @@ int main()
                 window.draw(*startTitleSprite);
             else
                 window.draw(titleText);
+            
+            // Draw volume slider (always visible in menu and game)
+            window.draw(volumeLabel);
+            window.draw(volumeSliderBackground);
+            window.draw(volumeSliderHandle);
+            window.draw(volumeValueText);
+            
             // If stats overlay is open render it instead of the menu buttons
             if (statsOpen)
             {
@@ -934,7 +1015,7 @@ int main()
         // Draw steel icon and text
         if (steelIconSprite.has_value())
         {
-            steelIconSprite->setPosition({statsIconX, statsBasePos.y + statsVSpacing * 2.f});
+            steelIconSprite->setPosition({statsIconX, statsBasePos.y + statsVSpacing * 2.2f});
             window.draw(*steelIconSprite);
         }
         window.draw(statsSteelText);
@@ -942,7 +1023,7 @@ int main()
         // Draw cash icon and text
             if (cashIconSprite.has_value())
             {
-                cashIconSprite->setPosition({statsIconX, statsBasePos.y + statsVSpacing * 3.f + 4.f});
+                cashIconSprite->setPosition({statsIconX, statsBasePos.y + statsVSpacing * 3.2f + 4.f});
                 window.draw(*cashIconSprite);
             }
         window.draw(statsMoneyText);

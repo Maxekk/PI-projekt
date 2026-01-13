@@ -1077,3 +1077,10 @@ void stopMineMusic()
         mineMusicPlaying = false;
     }
 }
+void setMusicVolume(float volume)
+{
+    if (mineMusicLoaded)
+    {
+        mineMusic.setVolume(volume);
+    }
+}
