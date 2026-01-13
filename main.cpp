@@ -93,25 +93,23 @@ int main()
         }
     }
 
-    // Menu background (wide image with horizontal panning)
+    // Menu background
     sf::Texture menuBgTexture;
     std::optional<sf::Sprite> menuBgSprite;
     float menuPanPosX = 0.f;
     float menuPanMinX = 0.f;
     float menuPanMaxX = 0.f;
-    float menuPanSpeed = 20.f; // pixels per second
-    int menuPanDir = 1; // 1 = move right (towards 0), -1 = move left (towards min)
+    float menuPanSpeed = 20.f;
+    int menuPanDir = 1;
     if (menuBgTexture.loadFromFile("images/menu-bg.jpg"))
     {
         menuBgSprite = sf::Sprite(menuBgTexture);
         sf::Vector2u ts = menuBgTexture.getSize();
         if (ts.x > 0 && ts.y > 0)
         {
-            // Scale to fit window height and allow horizontal panning
             float scale = 600.f / static_cast<float>(ts.y);
             menuBgSprite->setScale({scale, scale});
             float scaledWidth = ts.x * scale;
-            // If image wider than window, enable panning between [800 - scaledWidth, 0]
             if (scaledWidth > 800.f)
             {
                 menuPanMinX = 800.f - scaledWidth;
@@ -119,7 +117,6 @@ int main()
             }
             else
             {
-                // Center if smaller
                 menuPanMinX = menuPanMaxX = (800.f - scaledWidth) / 2.f;
             }
             menuPanPosX = menuPanMinX;
@@ -144,9 +141,8 @@ int main()
     }
 
     // --- LOCATION ICONS (for map screen) ---
-    // Icon size (larger for better visibility)
     const float iconSize = 120.f;
-    const float iconSpacing = 30.f; // Space between icon and text
+    const float iconSpacing = 30.f;
     
     // Mine icon
     sf::Texture mineIconTexture;
@@ -154,7 +150,6 @@ int main()
     if (mineIconTexture.loadFromFile("images/mine-icon.png"))
     {
         mineIconSprite = sf::Sprite(mineIconTexture);
-        // Scale icon to desired size (maintain aspect ratio)
         sf::Vector2u textureSize = mineIconTexture.getSize();
         if (textureSize.x > 0 && textureSize.y > 0)
         {
@@ -194,10 +189,10 @@ int main()
     // --- GAME STATE ---
     Location currentLocation = Location::StartMenu;
     int level = 1;
-    int xp = 0; // Experience points
-    int money = 200; // Will be used later
-    long long collectedIron = 0; // Iron collected from mine
-    long long steel = 0; // Steel produced from iron
+    int xp = 0;
+    int money = 200;
+    long long collectedIron = 0;
+    long long steel = 0;
 
     // Function to calculate XP needed for next level
     auto getXPForNextLevel = [](int currentLevel) -> int {
@@ -221,7 +216,6 @@ int main()
     if (mainbarTexture.loadFromFile("images/UI-mainbar.png"))
     {
         mainbarSprite = sf::Sprite(mainbarTexture);
-        // Scale mainbar to approx 250x70 for consistent UI size
         sf::Vector2u textureSize = mainbarTexture.getSize();
         if (textureSize.x > 0 && textureSize.y > 0)
         {
@@ -233,8 +227,8 @@ int main()
     }
 
     // --- UI: STATS ICONS ---
-    const float statsIconSize = 20.f; // Size for stat icons
-    const float statsIconTextSpacing = 5.f; // Space between icon and text
+    const float statsIconSize = 20.f;
+    const float statsIconTextSpacing = 5.f;
     
     // Iron icon
     sf::Texture ironIconTexture;
@@ -294,8 +288,8 @@ int main()
     statsMoneyText.setFillColor(sf::Color::White);
     // Base position and vertical spacing
     const sf::Vector2f statsBasePos = {10.f, 6.f};
-    const float statsVSpacing = 25.5f; // gap between lines (no '\n')
-    const float statsIconX = statsBasePos.x; // X position for icons
+    const float statsVSpacing = 25.5f;
+    const float statsIconX = statsBasePos.x;
     statsLevelText.setPosition(statsBasePos);
     // Text positions adjusted to be after icons
     statsIronText.setPosition({statsBasePos.x + statsIconSize + statsIconTextSpacing, statsBasePos.y + statsVSpacing});
@@ -309,7 +303,6 @@ int main()
     {
         mapButtonSprite = sf::Sprite(mapButtonTexture);
         mapButtonSprite->setPosition({690.f, 10.f});
-        // Scale to appropriate button size (100x40)
         sf::Vector2u textureSize = mapButtonTexture.getSize();
         if (textureSize.x > 0 && textureSize.y > 0)
         {
@@ -319,7 +312,6 @@ int main()
         }
     }
     
-    // Keep old button for bounds checking (invisible)
     sf::RectangleShape mapButton({100.f, 40.f});
     mapButton.setPosition({690.f, 10.f});
 
@@ -330,16 +322,15 @@ int main()
     locationText.setPosition({250.f, 250.f});
 
     // --- MAP BUTTONS ---
-    // Larger text for map screen
     const unsigned int mapTextSize = 52;
     sf::Text mineText(font, "KOPALNIA", mapTextSize);
     sf::Text furnaceText(font, "HUTA", mapTextSize);
     sf::Text marketText(font, "GIELDA", mapTextSize);
 
-    // Text positions (centered and spaced out to use more screen)
+    // Text positions
     float textStartX = 200.f + iconSize + iconSpacing;
-    float verticalSpacing = 140.f; // More space between items
-    float startY = 150.f; // Start higher up
+    float verticalSpacing = 140.f;
+    float startY = 150.f;
     mineText.setPosition({textStartX, startY});
     furnaceText.setPosition({textStartX, startY + verticalSpacing});
     marketText.setPosition({textStartX, startY + verticalSpacing * 2.f});
@@ -348,7 +339,7 @@ int main()
     sf::Color mineTextDefaultColor = sf::Color::White;
     sf::Color furnaceTextDefaultColor = sf::Color::White;
     sf::Color marketTextDefaultColor = sf::Color::White;
-    sf::Color hoverColor = sf::Color(255, 200, 100); // Light orange/yellow for hover
+    sf::Color hoverColor = sf::Color(255, 200, 100);
 
     // --- START MENU UI ---
     sf::RectangleShape playButton({200.f, 60.f});
@@ -411,11 +402,30 @@ int main()
         statsBtnSprite->setPosition({300.f, 380.f});
     }
 
+    // Start menu title image
+    sf::Texture startTitleTexture;
+    std::optional<sf::Sprite> startTitleSprite;
+    bool startTitleLoaded = false;
+    if (startTitleTexture.loadFromFile("images/start-menu-title.png"))
+    {
+        startTitleSprite = sf::Sprite(startTitleTexture);
+        sf::Vector2u textureSize = startTitleTexture.getSize();
+        if (textureSize.x > 0 && textureSize.y > 0)
+        {
+            float scaleX = 400.f / static_cast<float>(textureSize.x);
+            float scaleY = scaleX; // keep aspect ratio
+            startTitleSprite->setScale({scaleX, scaleY});
+            float scaledWidth = textureSize.x * scaleX;
+            float xPos = (800.f - scaledWidth) / 2.f;
+            startTitleSprite->setPosition({xPos, 20.f});
+        }
+        startTitleLoaded = true;
+    }
+
     sf::Text titleText(font);
     titleText.setString("KLIKER - HUTA");
     titleText.setCharacterSize(48);
     titleText.setFillColor(sf::Color::White);
-    // center title horizontally and approximate vertical center using character size
     {
         sf::FloatRect b = titleText.getLocalBounds();
         titleText.setPosition(sf::Vector2f{400.f - b.size.x / 2.f, 100.f - b.size.y / 2.f});
@@ -442,7 +452,7 @@ int main()
     }
 
     // --- STATS / SESSION TRACKING ---
-    sf::Clock sessionClock; // track total play time
+    sf::Clock sessionClock;
     long long totalCollectedIron = 0;
     long long totalMeltedIron = 0;
     long long totalEarnedMoney = 0;
@@ -453,7 +463,7 @@ int main()
     int prevMoney = money;
 
     bool statsOpen = false;
-    bool pausedMenu = false; // true when menu opened via Escape (shows Resume instead of Play)
+    bool pausedMenu = false;
     Location menuReturnLocation = Location::Mine;
     sf::RectangleShape statsPanel({560.f, 360.f});
     statsPanel.setPosition({120.f, 100.f});
@@ -486,15 +496,11 @@ int main()
     if (currentLocation == Location::Mine)
         playMineMusic();
 
-    // Clock for delta time
     sf::Clock frameClock;
 
     while (window.isOpen())
     {
-        // Calculate delta time
         float deltaTime = frameClock.restart().asSeconds();
-        
-        // Get mouse position for hover detection
         auto mouse = sf::Mouse::getPosition(window);
         sf::Vector2f mousePos(mouse.x, mouse.y);
         
@@ -503,7 +509,6 @@ int main()
         bool keyD = sf::Keyboard::isKeyPressed(sf::Keyboard::Key::D);
 
         // --- HOVER DETECTION ---
-        // Reset text colors to default
         mineText.setFillColor(mineTextDefaultColor);
         furnaceText.setFillColor(furnaceTextDefaultColor);
         marketText.setFillColor(marketTextDefaultColor);
@@ -579,7 +584,6 @@ int main()
         // Update menu background panning when on Start Menu
         if (currentLocation == Location::StartMenu && menuBgSprite.has_value())
         {
-            // Only pan if there is a range to pan
             if (menuPanMinX < menuPanMaxX)
             {
                 menuPanPosX += menuPanDir * menuPanSpeed * deltaTime;
@@ -597,7 +601,6 @@ int main()
             }
             else
             {
-                // static centered
                 menuBgSprite->setPosition({menuPanMinX, 0.f});
             }
         }
@@ -735,13 +738,13 @@ int main()
                     if (handled) continue;
                 }
 
-                // Click MAPA button (only when not on map or menu)
+                // Click MAPA button
                 if (currentLocation != Location::Map && currentLocation != Location::StartMenu && mapButton.getGlobalBounds().contains(mousePos))
                 {
                     currentLocation = Location::Map;
                 }
 
-                // Map click - lokzalization change
+                // Map click
                 if (currentLocation == Location::Map)
                 {
                     if (mineText.getGlobalBounds().contains(mousePos))
@@ -794,7 +797,7 @@ int main()
 
         // Check for level up
         int xpNeeded = getXPForNextLevel(level);
-        while (xp >= xpNeeded && level < 100) // Cap at level 100
+        while (xp >= xpNeeded && level < 100)
         {
             xp -= xpNeeded;
             level++;
@@ -808,7 +811,7 @@ int main()
         statsSteelText.setString(": " + std::to_string(steel) + " kg");
         statsMoneyText.setString(": " + std::to_string(money));
 
-        // --- UPDATE SESSION STATS (detect deltas since last frame) ---
+        // --- UPDATE SESSION STATS
         if (collectedIron > prevCollectedIron)
         {
             totalCollectedIron += (collectedIron - prevCollectedIron);
@@ -816,7 +819,6 @@ int main()
         if (steel > prevSteel)
         {
             long long steelGained = steel - prevSteel;
-            // approximate iron melted (inverse of steel = iron/10)
             totalMeltedIron += steelGained * 10;
         }
         int deltaMoney = money - prevMoney;
@@ -831,7 +833,6 @@ int main()
 
         window.clear(sf::Color(30, 30, 30));
 
-        // If we're on the Start Menu, draw menu UI and skip location rendering
         if (currentLocation == Location::StartMenu)
         {
             if (menuBgSprite.has_value())
@@ -842,7 +843,10 @@ int main()
             {
                 window.draw(*furnaceBgSprite);
             }
-            window.draw(titleText);
+            if (startTitleSprite.has_value())
+                window.draw(*startTitleSprite);
+            else
+                window.draw(titleText);
             // If stats overlay is open render it instead of the menu buttons
             if (statsOpen)
             {
@@ -852,7 +856,6 @@ int main()
                 float sx = statsPanel.getPosition().x + 20.f;
                 float sy = statsPanel.getPosition().y + 60.f;
                 float lineH = 36.f;
-                // Time played in minutes
                 float minutes = sessionClock.getElapsedTime().asSeconds() / 60.f;
                 statsLines[0].setString("Time played: " + std::to_string((int)minutes) + " min");
                 statsLines[1].setString("Achieved level: " + std::to_string(maxLevel));
@@ -870,9 +873,8 @@ int main()
                 // Draw image buttons if available, otherwise draw rectangles+text
                 if (pausedMenu)
                 {
-                    // Draw Resume (reuse play button texture) + stats + quit
                     if (playBtnSprite.has_value()) window.draw(*playBtnSprite);
-                    else { window.draw(playButton); /* no playText for resume */ }
+                    else { window.draw(playButton) }
                 }
                 else
                 {
@@ -907,7 +909,6 @@ int main()
             window.draw(*marketBgSprite);
         }
 
-        // UI zawsze
         // Draw mainbar at top left (on all locations)
         if (mainbarSprite.has_value())
         {
@@ -940,7 +941,7 @@ int main()
             }
         window.draw(statsMoneyText);
         
-        // Draw MAP button (using ui-huta.png image) only when NOT on map or menu
+        // Draw MAP button
         if (currentLocation != Location::Map && currentLocation != Location::StartMenu && mapButtonSprite.has_value())
         {
             window.draw(*mapButtonSprite);
@@ -948,7 +949,7 @@ int main()
 
         if (currentLocation == Location::Map)
         {
-            // Draw location icons (to the left of text)
+            // Draw location icons
             float iconX = 200.f;
             float startY = 150.f;
             float verticalSpacing = 140.f;
