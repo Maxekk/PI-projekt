@@ -42,7 +42,7 @@ void initStocks(const sf::Font& font)
 {
     if (stocksInitialized) return;
 
-    // 1. Tytuł
+    // 1. tablica z nazwą
     if (!gieldaTitleLoaded && gieldaTitleTexture.loadFromFile("images/ui-gielda.png")) {
         gieldaTitleSprite.emplace(gieldaTitleTexture);
         sf::Vector2u ts = gieldaTitleTexture.getSize();
@@ -54,7 +54,7 @@ void initStocks(const sf::Font& font)
         gieldaTitleLoaded = true;
     }
 
-    // 2. Firmy
+    // 2. Klienci - firmy
     std::vector<std::string> names = { "PolStal", "Stalex", "Stalium", "ATS" };
     float startX = 35.f;
     float gap = 20.f;
@@ -64,7 +64,7 @@ void initStocks(const sf::Font& font)
         Company c;
         c.name = names[i];
         
-        // ZMIANA: Cena od 1 do 9 $
+        // Cena za sztukę
         c.pricePerUnit = rand() % 9 + 1; 
 
         float posX = startX + i * (sectionWidth + gap);
@@ -78,7 +78,7 @@ void initStocks(const sf::Font& font)
         c.nameTxt.emplace(font, c.name, 22);
         c.nameTxt->setPosition({ posX + 15.f, 165.f });
 
-        c.priceTxt.emplace(font, "Cena za szt: " + std::to_string(c.pricePerUnit) + " $", 17);
+        c.priceTxt.emplace(font, "Cena za kg: " + std::to_string(c.pricePerUnit) + " $", 17);
         c.priceTxt->setFillColor(sf::Color::Yellow);
         c.priceTxt->setPosition({ posX + 15.f, 200.f });
 
@@ -134,12 +134,12 @@ void initStocks(const sf::Font& font)
 
 void updateStocks(const sf::Vector2f& mousePos, long long& steel, int& money)
 {
-    // Aktualizacja cen co 5 sekund
+    // Aktualizacja cen =5 sekund
     if (priceTimer.getElapsedTime().asSeconds() >= 5.0f) {
         for (auto& c : companies) {
             // ZMIANA: Cena od 1 do 9 $
             c.pricePerUnit = rand() % 9 + 1; 
-            if (c.priceTxt) c.priceTxt->setString("Cena za szt: " + std::to_string(c.pricePerUnit) + " $");
+            if (c.priceTxt) c.priceTxt->setString("Cena za kg: " + std::to_string(c.pricePerUnit) + " $");
         }
         priceTimer.restart();
     }
