@@ -20,10 +20,10 @@ Pętla rozgrywki opiera się na prostym cyklu ekonomicznym:
 
 ## 📸 Zrzuty ekranu
 
-![Rozgrywka]("screenshots/ss1.png")
-![Rozgrywka]("screenshots/ss2.png")
-![Rozgrywka]("screenshots/ss3.png")
-![Rozgrywka]("screenshots/ss4.png")
+![Rozgrywka](screenshots/ss1.png)
+![Rozgrywka](screenshots/ss2.png)
+![Rozgrywka](screenshots/ss3.png)
+![Rozgrywka](screenshots/ss4.png)
 
 ## 🛠️ Technologie
 
